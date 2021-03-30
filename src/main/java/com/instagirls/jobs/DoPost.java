@@ -1,4 +1,4 @@
-package com.instagirls;
+package com.instagirls.jobs;
 
 import com.instagirls.instagram.InstagramService;
 import com.instagirls.telegram.TelegramPost;
@@ -12,7 +12,7 @@ public class DoPost implements Runnable {
 
     @Override
     public void run() {
-        LOGGER.info("Executing..");
+        LOGGER.info("Executing DoPost()..");
         TelegramPost telegramPost = new InstagramService().generatePost();
         new TelegramService().postToTelegram(telegramPost);
 

@@ -1,7 +1,6 @@
 package com.instagirls.instagram;
 
 import com.github.instagram4j.instagram4j.IGClient;
-import com.github.instagram4j.instagram4j.exceptions.IGLoginException;
 import com.github.instagram4j.instagram4j.models.media.timeline.*;
 import com.github.instagram4j.instagram4j.requests.feed.FeedUserRequest;
 import com.github.instagram4j.instagram4j.responses.feed.FeedUserResponse;
@@ -15,6 +14,7 @@ import org.slf4j.LoggerFactory;
 
 import java.nio.file.Files;
 import java.nio.file.Paths;
+import java.nio.file.StandardOpenOption;
 import java.util.*;
 import java.util.concurrent.ExecutionException;
 import java.util.stream.Collectors;
@@ -27,11 +27,29 @@ public class InstagramService {
     private static final Logger LOGGER = LoggerFactory.getLogger(InstagramService.class);
     private static final Random random = new Random();
     private IGClient igClient;
+    private static Set<String> posted;
 
     public TelegramPost generatePost() {
         login();
+        loadPosted();
         final String girlUsername = getRandomUsername();
         return getNewMostLikedPostMediaUrls(girlUsername);
+    }
+
+    @SneakyThrows
+    // TODO conditional preload
+    private void loadPosted() {
+        posted = Files.lines(Paths.get(System.getenv(POSTED_FILE_URL))).collect(Collectors.toSet());
+        LOGGER.info("Preloaded file!");
+    }
+
+    @SneakyThrows
+    public static void setPosted(final String instagramPostId) {
+        Files.write(Paths.get(System.getenv(POSTED_FILE_URL)),
+                (instagramPostId + "\n").getBytes(),
+                StandardOpenOption.APPEND);
+        posted.add(instagramPostId);
+        LOGGER.info("Posted!");
     }
 
     private void login() {
@@ -43,38 +61,35 @@ public class InstagramService {
         }
     }
 
+    @SneakyThrows
     private void performLogin() {
         LOGGER.info("Performing login..");
-        try {
-            igClient = IGClient.builder()
-                    .login();
-            LOGGER.info("Login performed.");
-        } catch (IGLoginException e) {
-            throw new RuntimeException("Could not login to com.instagirls.instagram!");
-        }
+        igClient = IGClient.builder()
+                .username(System.getenv("username"))
+                .password(System.getenv("password"))
+                .login();
+        LOGGER.info("Login performed.");
     }
 
+    @SneakyThrows
     private TelegramPost getNewMostLikedPostMediaUrls(final String girlUsername) {
         final Set<TimelineMedia> items = new HashSet<>();
         FeedUserResponse feedUserResponse;
 
-        try {
-            final Long pk = getUserPK(girlUsername);
-            final FeedUserRequest request = new FeedUserRequest(pk);
+        final Long pk = getUserPK(girlUsername);
+        final FeedUserRequest request = new FeedUserRequest(pk);
+        feedUserResponse = igClient.sendRequest(request).get();
+        items.addAll(feedUserResponse.getItems());
+
+        while (feedUserResponse.isMore_available()) {
+            request.setMax_id(feedUserResponse.getNext_max_id());
             feedUserResponse = igClient.sendRequest(request).get();
             items.addAll(feedUserResponse.getItems());
-
-            while (feedUserResponse.isMore_available()) {
-                request.setMax_id(feedUserResponse.getNext_max_id());
-                feedUserResponse = igClient.sendRequest(request).get();
-                items.addAll(feedUserResponse.getItems());
-                LOGGER.info("Loading more posts!");
-            }
-
-
-        } catch (InterruptedException | ExecutionException e) {
-            throw new RuntimeException("FeedUserRequest problems");
+            LOGGER.info("Batch: " + feedUserResponse.getItems().size());
+            LOGGER.info("Overall: " + items.size());
+            LOGGER.info("Loading more posts!");
         }
+
         final TelegramPost mostLiked = getMostLiked(items);
         mostLiked.setGirlAccount(girlUsername);
         return mostLiked;
@@ -91,14 +106,18 @@ public class InstagramService {
     }
 
     private TimelineMedia getTimelineMedia(final Set<TimelineMedia> items) {
+        LOGGER.info("Getting timeline media..");
         return items.stream()
                 .filter(this::isNotPosted)
                 .max(Comparator.comparingInt(TimelineMedia::getLike_count))
-                .orElseThrow(RuntimeException::new);
+//                .orElseThrow(RuntimeException::new);
+                .get();
     }
 
     @NotNull
     private TelegramPost getTelegramPost(final TimelineMedia timelineMedia) {
+        LOGGER.info("Getting telegram post..");
+
         final Set<Media> medias = new HashSet<>();
         addMedia(medias, timelineMedia);
         return buildTelegramPost(timelineMedia, medias);
@@ -187,8 +206,7 @@ public class InstagramService {
 
     @SneakyThrows
     private boolean isNotPosted(TimelineMedia timelineMedia) {
-        return Files.lines(Paths.get(System.getenv(POSTED_FILE_URL)))
-                .anyMatch(s -> s.equals(timelineMedia.getId()));
+        return !posted.contains(timelineMedia.getId());
     }
 
     @SneakyThrows

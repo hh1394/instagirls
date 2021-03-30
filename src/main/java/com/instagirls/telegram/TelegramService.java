@@ -1,28 +1,33 @@
 package com.instagirls.telegram;
 
+import com.instagirls.instagram.InstagramService;
 import com.pengrad.telegrambot.TelegramBot;
 import com.pengrad.telegrambot.model.request.InputMedia;
 import com.pengrad.telegrambot.model.request.InputMediaPhoto;
 import com.pengrad.telegrambot.request.GetUpdates;
 import com.pengrad.telegrambot.request.SendMediaGroup;
 import com.pengrad.telegrambot.response.GetUpdatesResponse;
+import lombok.SneakyThrows;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.nio.file.Files;
+import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.stream.Collectors;
 
-import static com.instagirls.PropertiesUtil.POSTED_FILE_URL;
+import static com.instagirls.PropertiesUtil.CHATS_FILE_URL;
 
 public class TelegramService {
     private static final Logger LOGGER = LoggerFactory.getLogger(TelegramService.class);
     private static TelegramBot bot;
+    private static Set<Long> chatIds;
 
     private static void initBot() {
         LOGGER.info("Initializing bot..");
@@ -37,23 +42,12 @@ public class TelegramService {
 
     public void postToTelegram(TelegramPost telegramPost) {
         initBot();
-        final Set<Long> chatIds = getChatIds();
-        sendContentToChats(chatIds, telegramPost);
-        setPosted(telegramPost.getInstagramPostId());
+        loadChatIds();
+        sendContentToChats(telegramPost);
+        InstagramService.setPosted(telegramPost.getInstagramPostId());
     }
 
-    private void setPosted(final String instagramPostId) {
-        try {
-            Files.write(Paths.get(System.getenv(POSTED_FILE_URL)),
-                    instagramPostId.getBytes(),
-                    StandardOpenOption.APPEND);
-        } catch (IOException e) {
-            LOGGER.error("Could not append to posted file!", e);
-        }
-        LOGGER.info("Posted!");
-    }
-
-    private void sendContentToChats(final Set<Long> chatIds, final TelegramPost telegramPost) {
+    private void sendContentToChats(final TelegramPost telegramPost) {
         for (Long chatId : chatIds) {
             sendContentToChat(telegramPost, chatId);
         }
@@ -65,22 +59,6 @@ public class TelegramService {
         bot.execute(request);
     }
 
-//    private List<InputMedia<?>> mapMedias(final TelegramPost telegramPost) {
-//        List<InputMedia<?>> inputMedia = new ArrayList<>();
-//        for (Media instagramPostMedia : telegramPost.getInstagramPostMedias()) {
-//            if (instagramPostMedia.getType() == PHOTO) {
-//                InputMediaPhoto photo = new InputMediaPhoto(instagramPostMedia.getUrl());
-//                photo.caption(telegramPost.getGirlAccountURL());
-//                inputMedia.add(photo);
-//            } else {
-//                InputMediaVideo video = new InputMediaVideo(instagramPostMedia.getUrl());
-//                video.caption(telegramPost.getGirlAccountURL());
-//                inputMedia.add(video);
-//            }
-//        }
-//        return inputMedia;
-//    }
-
     private List<InputMedia<?>> mapMedias(final TelegramPost telegramPost) {
         List<InputMedia<?>> inputMedia = new ArrayList<>();
         for (Media instagramPostMedia : telegramPost.getInstagramPostMedias()) {
@@ -91,7 +69,42 @@ public class TelegramService {
         return inputMedia;
     }
 
-    private Set<Long> getChatIds() {
+    @SneakyThrows
+    private void loadChatIds() {
+        if (chatIds == null) {
+            chatIds = Files.lines(Paths.get(System.getenv(CHATS_FILE_URL)))
+                    .map(Long::new)
+                    .collect(Collectors.toSet());
+            LOGGER.info("Loaded chats!");
+        } else {
+            LOGGER.info("No need to load chats!");
+
+        }
+    }
+
+    public void updateChats() throws IOException {
+        loadChatIds();
+        initBot();
+        final Set<Long> chatsWithUpdates = getChatsWithUpdates();
+        Set<Long> newChatIds = chatsWithUpdates.stream().filter(chatId -> !chatIds.contains(chatId)).collect(Collectors.toSet());
+        LOGGER.info("Detected " + newChatIds.size() + " new chats");
+        chatIds.addAll(chatsWithUpdates);
+        saveChatIds(newChatIds);
+    }
+
+    //TODO optimize
+    private void saveChatIds(final Set<Long> newChatIds) throws IOException {
+        if (newChatIds != null && !newChatIds.isEmpty()) {
+            final Path path = Paths.get(System.getenv(CHATS_FILE_URL));
+            for (final Long chatId : newChatIds) {
+                Files.write(path,
+                        (chatId + "\n").getBytes(),
+                        StandardOpenOption.APPEND);
+            }
+        }
+    }
+
+    private Set<Long> getChatsWithUpdates() {
         final GetUpdatesResponse updates = bot.execute(new GetUpdates());
         final Set<Long> chatIds = new HashSet<>();
         updates.updates()
@@ -101,8 +114,7 @@ public class TelegramService {
                     }
                 });
 
-        LOGGER.info(String.format("Chats for posting: %s", chatIds));
+        LOGGER.info(String.format("Chats with updates: %s", chatIds));
         return chatIds;
     }
-
 }
