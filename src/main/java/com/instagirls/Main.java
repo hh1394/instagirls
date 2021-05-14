@@ -1,6 +1,5 @@
 package com.instagirls;
 
-import com.instagirls.jobs.DoGetUpdates;
 import com.instagirls.jobs.DoPost;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
