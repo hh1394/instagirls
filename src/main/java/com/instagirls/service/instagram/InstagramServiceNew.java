@@ -8,7 +8,6 @@ import com.instagirls.model.instagram.InstagramAccount;
 import com.instagirls.model.instagram.InstagramPost;
 import com.instagirls.repository.InstagramAccountRepository;
 import com.instagirls.repository.InstagramPostRepository;
-import com.instagirls.service.telegram.entity.TelegramPost;
 import com.instagirls.util.InstagramMediaExtractor;
 import lombok.SneakyThrows;
 import org.slf4j.Logger;
@@ -32,12 +31,6 @@ public class InstagramServiceNew {
     private static final Random random = new Random();
     private static IGClient igClient;
 
-    @Value("${instagram.username}")
-    private String instagramUsername;
-
-    @Value("${instagram.password}")
-    private String instagramPassword;
-
     @Autowired
     private InstagramAccountRepository instagramAccountRepository;
 
@@ -46,9 +39,16 @@ public class InstagramServiceNew {
 
     @PostConstruct
     public void loadPostsForAccounts() {
+        loadAllAccounts();
         login();
+        LOGGER.info("Loading all posts..");
         final List<InstagramAccount> allAccounts = (List<InstagramAccount>) instagramAccountRepository.findAll();
+        LOGGER.info("Accounts: " + allAccounts.size());
         allAccounts.forEach(this::loadPostsForAccount);
+    }
+
+    private void loadAllAccounts() {
+
     }
 
     @SneakyThrows
@@ -128,10 +128,10 @@ public class InstagramServiceNew {
 
     @SneakyThrows
     private void performLogin() {
-        LOGGER.info("Performing login.. " + instagramUsername);
+        LOGGER.info("Performing login.. ");
         igClient = IGClient.builder()
-                .username(instagramUsername)
-                .password(instagramPassword)
+                .username(System.getenv("instagram_username"))
+                .password(System.getenv("instagram_password"))
                 .login();
         LOGGER.info("Login performed.");
     }
