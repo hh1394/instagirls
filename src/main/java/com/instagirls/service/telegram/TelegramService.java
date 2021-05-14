@@ -1,8 +1,8 @@
-package com.instagirls.telegram;
+package com.instagirls.service.telegram;
 
-import com.instagirls.instagram.InstagramService;
-import com.instagirls.telegram.entity.Media;
-import com.instagirls.telegram.entity.TelegramPost;
+import com.instagirls.service.instagram.InstagramService;
+import com.instagirls.service.telegram.entity.Media;
+import com.instagirls.service.telegram.entity.TelegramPost;
 import com.pengrad.telegrambot.TelegramBot;
 import com.pengrad.telegrambot.model.Update;
 import com.pengrad.telegrambot.model.request.*;

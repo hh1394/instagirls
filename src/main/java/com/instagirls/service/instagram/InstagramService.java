@@ -1,12 +1,12 @@
-package com.instagirls.instagram;
+package com.instagirls.service.instagram;
 
 import com.github.instagram4j.instagram4j.IGClient;
 import com.github.instagram4j.instagram4j.models.media.timeline.*;
 import com.github.instagram4j.instagram4j.requests.feed.FeedUserRequest;
 import com.github.instagram4j.instagram4j.responses.feed.FeedUserResponse;
-import com.instagirls.telegram.entity.Media;
-import com.instagirls.telegram.entity.MediaType;
-import com.instagirls.telegram.entity.TelegramPost;
+import com.instagirls.service.telegram.entity.Media;
+import com.instagirls.service.telegram.entity.MediaType;
+import com.instagirls.service.telegram.entity.TelegramPost;
 import lombok.SneakyThrows;
 import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;

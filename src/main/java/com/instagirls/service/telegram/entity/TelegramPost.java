@@ -1,4 +1,4 @@
-package com.instagirls.telegram.entity;
+package com.instagirls.service.telegram.entity;
 
 import lombok.Data;
 

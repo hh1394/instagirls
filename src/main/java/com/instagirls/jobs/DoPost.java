@@ -1,8 +1,8 @@
 package com.instagirls.jobs;
 
-import com.instagirls.instagram.InstagramService;
-import com.instagirls.telegram.entity.TelegramPost;
-import com.instagirls.telegram.TelegramService;
+import com.instagirls.service.instagram.InstagramService;
+import com.instagirls.service.telegram.entity.TelegramPost;
+import com.instagirls.service.telegram.TelegramService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
