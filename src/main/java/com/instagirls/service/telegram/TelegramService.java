@@ -25,7 +25,7 @@ import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-import static com.instagirls.PropertiesUtil.CHATS_FILE_URL;
+import static com.instagirls.util.PropertiesUtil.CHATS_FILE_URL;
 
 public class TelegramService {
     private static final Logger LOGGER = LoggerFactory.getLogger(TelegramService.class);

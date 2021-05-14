@@ -23,8 +23,14 @@ public class InstagramPost {
     @OneToMany
     private List<InstagramMedia> instagramMedia;
 
-    @Column
-    private Integer likes;
+    @ManyToOne
+    private InstagramAccount instagramAccount;
+
+    @Column(nullable = false)
+    private Integer likes = 0;
+
+    @Column(nullable = false)
+    private boolean posted = false;
 
     @Column
     private String caption = "(NO CAPTION)";

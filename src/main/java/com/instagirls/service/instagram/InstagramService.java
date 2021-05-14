@@ -19,8 +19,8 @@ import java.util.*;
 import java.util.concurrent.ExecutionException;
 import java.util.stream.Collectors;
 
-import static com.instagirls.PropertiesUtil.GIRLS_FILE_URL;
-import static com.instagirls.PropertiesUtil.POSTED_FILE_URL;
+import static com.instagirls.util.PropertiesUtil.GIRLS_FILE_URL;
+import static com.instagirls.util.PropertiesUtil.POSTED_FILE_URL;
 
 public class InstagramService {
 
@@ -31,17 +31,17 @@ public class InstagramService {
 
     public TelegramPost generatePost() {
         login();
-        loadPosted();
+//        loadPosted();
         final String girlUsername = getRandomUsername();
         return getNewMostLikedPostMediaUrls(girlUsername);
     }
 
-    @SneakyThrows
-    // TODO conditional preload
-    private void loadPosted() {
-        posted = Files.lines(Paths.get(System.getenv(POSTED_FILE_URL))).collect(Collectors.toSet());
-        LOGGER.info("Preloaded file!");
-    }
+//    @SneakyThrows
+//    // TODO conditional preload
+//    private void loadPosted() {
+//        posted = Files.lines(Paths.get(System.getenv(POSTED_FILE_URL))).collect(Collectors.toSet());
+//        LOGGER.info("Preloaded file!");
+//    }
 
     @SneakyThrows
     public static void setPosted(final String instagramPostId) {
@@ -211,13 +211,15 @@ public class InstagramService {
 
     @SneakyThrows
     private String getRandomUsername() {
-        List<String> strings = Files.lines(
+List<String> strings = Files.lines(
                 Paths.get(System.getenv(GIRLS_FILE_URL))).collect(Collectors.toList());
         int randomIndex = random.nextInt(strings.size());
         String girlUsername = strings.get(randomIndex);
         LOGGER.info(String.format("Girls: %s", girlUsername));
         return girlUsername;
-    }
 
+
+
+    }
 
 }

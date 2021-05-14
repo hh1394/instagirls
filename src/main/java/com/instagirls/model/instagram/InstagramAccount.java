@@ -18,7 +18,10 @@ public class InstagramAccount {
     private String id;
 
     @Column(nullable = false, unique = true)
-    private String url;
+    private String username;
+
+    @Column(unique = true)
+    private Long instagramPk;
 
     @OneToMany
     private List<InstagramPost> instagramPosts;
