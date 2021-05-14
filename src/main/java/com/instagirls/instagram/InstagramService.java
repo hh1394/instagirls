@@ -110,7 +110,6 @@ public class InstagramService {
         return items.stream()
                 .filter(this::isNotPosted)
                 .max(Comparator.comparingInt(TimelineMedia::getLike_count))
-//                .orElseThrow(RuntimeException::new);
                 .get();
     }
 

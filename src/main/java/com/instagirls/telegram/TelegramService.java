@@ -28,12 +28,12 @@ import java.util.stream.Collectors;
 import static com.instagirls.PropertiesUtil.CHATS_FILE_URL;
 
 public class TelegramService {
-    private final Logger LOGGER = LoggerFactory.getLogger(TelegramService.class);
-    private final String UPDATE_MESSAGE = "send_new_girl";
+    private static final Logger LOGGER = LoggerFactory.getLogger(TelegramService.class);
+    private static final String UPDATE_MESSAGE = "send_new_girl";
     private int newGirlCounter = 0;
     private TelegramBot bot;
     private Set<Long> chatIds;
-    private Integer lastVoteMessageId;
+    private Set<Integer> votedUsersIds = new HashSet<>();
 
     private void initBot() {
         LOGGER.info("Initializing bot..");
@@ -55,12 +55,17 @@ public class TelegramService {
 
     private void processUpdate(final Update update) {
         if (updateContainsValidVote(update)) {
-            LOGGER.info("Got request for a new girl! Current counter: " + ++newGirlCounter);
+            ++newGirlCounter;
+            votedUsersIds.add(update.callbackQuery().from().id());
+            LOGGER.info("Got request for a new girl!");
+            LOGGER.info("Current counter: " + newGirlCounter);
+            LOGGER.info("User: " + update.callbackQuery().from());
 
             if (newGirlCounter < 4) {
                 incrementMessageReplyMarkup(update);
             } else {
                 newGirlCounter = 0;
+                votedUsersIds = new HashSet<>();
                 removeVoteFromMessageReplyMarkup(update);
                 final TelegramPost telegramPost = new InstagramService().generatePost();
                 this.postToTelegram(telegramPost);
@@ -95,8 +100,9 @@ public class TelegramService {
     }
 
     private boolean updateContainsValidVote(final Update update) {
-        return update.callbackQuery().data().equals(UPDATE_MESSAGE)
-                && update.callbackQuery().message().messageId().equals(lastVoteMessageId);
+        final boolean isUpdateGirl = update.callbackQuery().data().equals(UPDATE_MESSAGE);
+        final boolean isNewUserVote = !votedUsersIds.contains(update.callbackQuery().from().id());
+        return isUpdateGirl && isNewUserVote;
     }
 
     public void postToTelegram(TelegramPost telegramPost) {
@@ -139,7 +145,6 @@ public class TelegramService {
         final EditMessageReplyMarkup editMessageReplyMarkup = new EditMessageReplyMarkup(chatId, messageId);
         editMessageReplyMarkup.replyMarkup(replyKeyboardMarkup);
         bot.execute(editMessageReplyMarkup);
-        lastVoteMessageId = messageId;
     }
 
     @NotNull
