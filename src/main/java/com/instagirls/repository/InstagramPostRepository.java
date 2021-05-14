@@ -5,5 +5,5 @@ import org.springframework.data.repository.CrudRepository;
 import org.springframework.stereotype.Repository;
 
 @Repository
-public interface InstagramPostRepository extends CrudRepository<Long, InstagramPost> {
+public interface InstagramPostRepository extends CrudRepository<InstagramPost, String> {
 }
