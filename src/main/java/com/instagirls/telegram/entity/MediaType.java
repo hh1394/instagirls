@@ -1,4 +1,4 @@
-package com.instagirls.telegram;
+package com.instagirls.telegram.entity;
 
 public enum MediaType {
 

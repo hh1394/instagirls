@@ -1,4 +1,4 @@
-package com.instagirls.telegram;
+package com.instagirls.telegram.entity;
 
 import lombok.AllArgsConstructor;
 import lombok.Data;

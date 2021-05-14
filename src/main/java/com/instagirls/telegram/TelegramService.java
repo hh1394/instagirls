@@ -1,13 +1,16 @@
 package com.instagirls.telegram;
 
 import com.instagirls.instagram.InstagramService;
+import com.instagirls.telegram.entity.Media;
+import com.instagirls.telegram.entity.TelegramPost;
 import com.pengrad.telegrambot.TelegramBot;
-import com.pengrad.telegrambot.model.request.InputMedia;
-import com.pengrad.telegrambot.model.request.InputMediaPhoto;
-import com.pengrad.telegrambot.request.GetUpdates;
-import com.pengrad.telegrambot.request.SendMediaGroup;
+import com.pengrad.telegrambot.model.Update;
+import com.pengrad.telegrambot.model.request.*;
+import com.pengrad.telegrambot.request.*;
 import com.pengrad.telegrambot.response.GetUpdatesResponse;
+import com.pengrad.telegrambot.response.SendResponse;
 import lombok.SneakyThrows;
+import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -25,19 +28,75 @@ import java.util.stream.Collectors;
 import static com.instagirls.PropertiesUtil.CHATS_FILE_URL;
 
 public class TelegramService {
-    private static final Logger LOGGER = LoggerFactory.getLogger(TelegramService.class);
-    private static TelegramBot bot;
-    private static Set<Long> chatIds;
+    private final Logger LOGGER = LoggerFactory.getLogger(TelegramService.class);
+    private final String UPDATE_MESSAGE = "send_new_girl";
+    private int newGirlCounter = 0;
+    private TelegramBot bot;
+    private Set<Long> chatIds;
+    private Integer lastVoteMessageId;
 
-    private static void initBot() {
+    private void initBot() {
         LOGGER.info("Initializing bot..");
         if (bot == null) {
             bot = new TelegramBot(System.getenv("bot_token"));
+            bot.setUpdatesListener(this::processUpdates);
             LOGGER.info("Created new bot.");
         } else {
             LOGGER.info("Bot already initialized.");
         }
 
+    }
+
+    private int processUpdates(final List<Update> updates) {
+        LOGGER.info(String.format("Got %s updates!", updates.size()));
+        updates.forEach(this::processUpdate);
+        return updates.get(updates.size() - 1).updateId();
+    }
+
+    private void processUpdate(final Update update) {
+        if (updateContainsValidVote(update)) {
+            LOGGER.info("Got request for a new girl! Current counter: " + ++newGirlCounter);
+
+            if (newGirlCounter < 4) {
+                incrementMessageReplyMarkup(update);
+            } else {
+                newGirlCounter = 0;
+                removeVoteFromMessageReplyMarkup(update);
+                final TelegramPost telegramPost = new InstagramService().generatePost();
+                this.postToTelegram(telegramPost);
+            }
+        }
+    }
+
+    private void removeVoteFromMessageReplyMarkup(final Update update) {
+        final EditMessageReplyMarkup editMessageReplyMarkup =
+                new EditMessageReplyMarkup(update.callbackQuery().message().chat().id(),
+                        update.callbackQuery().message().messageId());
+
+        final InlineKeyboardMarkup replyKeyboardMarkup = new InlineKeyboardMarkup();
+
+        final InlineKeyboardButton girlAccountUrlKeyboardButton = buildGirlLinkKeyboardButton(update.callbackQuery().message().replyMarkup().inlineKeyboard()[0][0].url());
+        replyKeyboardMarkup.addRow(girlAccountUrlKeyboardButton);
+        editMessageReplyMarkup.replyMarkup(replyKeyboardMarkup);
+        bot.execute(editMessageReplyMarkup);
+    }
+
+    private void incrementMessageReplyMarkup(final Update update) {
+        final EditMessageReplyMarkup editMessageReplyMarkup =
+                new EditMessageReplyMarkup(update.callbackQuery().message().chat().id(),
+                        update.callbackQuery().message().messageId());
+
+        final InlineKeyboardMarkup replyKeyboardMarkup =
+                getReplyInlineKeyboardMarkup(
+                        update.callbackQuery().message().replyMarkup().inlineKeyboard()[0][0].url());
+
+        editMessageReplyMarkup.replyMarkup(replyKeyboardMarkup);
+        bot.execute(editMessageReplyMarkup);
+    }
+
+    private boolean updateContainsValidVote(final Update update) {
+        return update.callbackQuery().data().equals(UPDATE_MESSAGE)
+                && update.callbackQuery().message().messageId().equals(lastVoteMessageId);
     }
 
     public void postToTelegram(TelegramPost telegramPost) {
@@ -54,16 +113,73 @@ public class TelegramService {
     }
 
     private void sendContentToChat(final TelegramPost telegramPost, final Long chatId) {
+        sendMedia(telegramPost, chatId);
+        sendCaptionWithReplyKeyboardMarkup(telegramPost, chatId);
+    }
+
+    private void sendMedia(final TelegramPost telegramPost, final Long chatId) {
         final List<InputMedia<?>> medias = mapMedias(telegramPost);
         final SendMediaGroup request = new SendMediaGroup(chatId, medias.toArray(new InputMedia[0]));
         bot.execute(request);
     }
 
+    private void sendCaptionWithReplyKeyboardMarkup(final TelegramPost telegramPost, final Long chatId) {
+        final SendResponse response = sendCaption(telegramPost, chatId);
+        addReplyKeyboardMarkup(telegramPost, chatId, response);
+    }
+
+    private void addReplyKeyboardMarkup(final TelegramPost telegramPost, final Long chatId, final SendResponse response) {
+
+        final InlineKeyboardMarkup replyKeyboardMarkup = getReplyInlineKeyboardMarkup(telegramPost.getGirlAccountURL());
+        sendReplyKeyboardMarkup(chatId, response, replyKeyboardMarkup);
+    }
+
+    private void sendReplyKeyboardMarkup(final Long chatId, final SendResponse response, final InlineKeyboardMarkup replyKeyboardMarkup) {
+        final Integer messageId = response.message().messageId();
+        final EditMessageReplyMarkup editMessageReplyMarkup = new EditMessageReplyMarkup(chatId, messageId);
+        editMessageReplyMarkup.replyMarkup(replyKeyboardMarkup);
+        bot.execute(editMessageReplyMarkup);
+        lastVoteMessageId = messageId;
+    }
+
+    @NotNull
+    private InlineKeyboardMarkup getReplyInlineKeyboardMarkup(final String girlAccountURL) {
+        final InlineKeyboardButton girlAccountUrlKeyboardButton = buildGirlLinkKeyboardButton(girlAccountURL);
+        final InlineKeyboardButton voteKeyboardButton = buildVoteKeyboardButton();
+        return buildKeyboardMarkup(girlAccountUrlKeyboardButton, voteKeyboardButton);
+    }
+
+    @NotNull
+    private InlineKeyboardMarkup buildKeyboardMarkup(final InlineKeyboardButton girlAccountUrlKeyboardButton, final InlineKeyboardButton voteKeyboardButton) {
+        final InlineKeyboardMarkup replyKeyboardMarkup = new InlineKeyboardMarkup();
+        replyKeyboardMarkup.addRow(girlAccountUrlKeyboardButton);
+        replyKeyboardMarkup.addRow(voteKeyboardButton);
+        return replyKeyboardMarkup;
+    }
+
+    @NotNull
+    private InlineKeyboardButton buildGirlLinkKeyboardButton(final String girlAccountURL) {
+        final InlineKeyboardButton girlAccountUrlKeyboardButton = new InlineKeyboardButton("Girl Instagram");
+        girlAccountUrlKeyboardButton.url(girlAccountURL);
+        return girlAccountUrlKeyboardButton;
+    }
+
+    @NotNull
+    private InlineKeyboardButton buildVoteKeyboardButton() {
+        final InlineKeyboardButton voteKeyboardButton = new InlineKeyboardButton(String.format("Send New Girl! (%s\\4)", newGirlCounter));
+        voteKeyboardButton.callbackData(UPDATE_MESSAGE);
+        return voteKeyboardButton;
+    }
+
+    private SendResponse sendCaption(final TelegramPost telegramPost, final Long chatId) {
+        final SendMessage sendMessage = new SendMessage(chatId, telegramPost.getCaption() != null ? telegramPost.getCaption() : "(NO CAPTION)");
+        return bot.execute(sendMessage);
+    }
+
     private List<InputMedia<?>> mapMedias(final TelegramPost telegramPost) {
-        List<InputMedia<?>> inputMedia = new ArrayList<>();
+        final List<InputMedia<?>> inputMedia = new ArrayList<>();
         for (Media instagramPostMedia : telegramPost.getInstagramPostMedias()) {
             InputMediaPhoto photo = new InputMediaPhoto(instagramPostMedia.getUrl());
-            photo.caption(telegramPost.getGirlAccountURL());
             inputMedia.add(photo);
         }
         return inputMedia;

@@ -17,6 +17,6 @@ public class Main {
         LOGGER.info("Program started!");
         final ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(2);
         scheduler.scheduleAtFixedRate(new DoPost(), 0, 1, TimeUnit.DAYS);
-        scheduler.scheduleAtFixedRate(new DoGetUpdates(), 0, 5, TimeUnit.MINUTES);
+//        scheduler.scheduleAtFixedRate(new DoGetUpdates(), 0, 1, TimeUnit.MINUTES);
     }
 }

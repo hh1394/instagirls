@@ -4,9 +4,9 @@ import com.github.instagram4j.instagram4j.IGClient;
 import com.github.instagram4j.instagram4j.models.media.timeline.*;
 import com.github.instagram4j.instagram4j.requests.feed.FeedUserRequest;
 import com.github.instagram4j.instagram4j.responses.feed.FeedUserResponse;
-import com.instagirls.telegram.Media;
-import com.instagirls.telegram.MediaType;
-import com.instagirls.telegram.TelegramPost;
+import com.instagirls.telegram.entity.Media;
+import com.instagirls.telegram.entity.MediaType;
+import com.instagirls.telegram.entity.TelegramPost;
 import lombok.SneakyThrows;
 import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
@@ -26,7 +26,7 @@ public class InstagramService {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(InstagramService.class);
     private static final Random random = new Random();
-    private IGClient igClient;
+    private static IGClient igClient;
     private static Set<String> posted;
 
     public TelegramPost generatePost() {
@@ -127,6 +127,7 @@ public class InstagramService {
     private TelegramPost buildTelegramPost(final TimelineMedia timelineMedia, final Set<Media> medias) {
         final TelegramPost telegramPost = new TelegramPost();
         telegramPost.setInstagramPostId(timelineMedia.getId());
+        telegramPost.setCaption(timelineMedia.getCaption() != null ? timelineMedia.getCaption().getText() : "(NO CAPTION)");
         telegramPost.setInstagramPostMedias(medias);
         return telegramPost;
     }
