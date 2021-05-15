@@ -152,8 +152,9 @@ public class InstagramService {
 
     private InstagramAccount getRandomAccount() {
         final List<InstagramAccount> allAccounts = (List<InstagramAccount>) instagramAccountRepository.findAll();
-        InstagramAccount instagramAccount = allAccounts.stream().filter(InstagramAccount::isActive).findAny()
-                .orElseThrow(() -> new IllegalStateException("No instagram accounts in DB!"));
+        LOGGER.info("All accounts: " + allAccounts.size());
+        final Random rand = new Random();
+        final InstagramAccount instagramAccount = allAccounts.get(rand.nextInt(allAccounts.size()));
         LOGGER.info("Random instagram account: " + instagramAccount.getUsername());
         return instagramAccount;
     }
