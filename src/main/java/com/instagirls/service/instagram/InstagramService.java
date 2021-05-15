@@ -58,7 +58,7 @@ public class InstagramService {
     public InstagramPostDTO getNewMostLikedPostFromRandomAccount() {
         final InstagramAccount instagramAccount = getRandomAccount();
         Optional<InstagramPost> instagramPost = instagramAccount.getInstagramPosts().stream()
-                .sorted(Comparator.comparingInt(InstagramPost::getLikes))
+                .sorted((ip1, ip2) -> Long.compare(ip2.getLikes(), ip1.getLikes()))
                 .filter(ip -> !ip.isPosted())
                 .findFirst();
         if (instagramPost.isPresent()) {
