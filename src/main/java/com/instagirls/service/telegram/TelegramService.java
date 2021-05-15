@@ -56,11 +56,11 @@ public class TelegramService {
         } else {
             LOGGER.info("Bot already initialized.");
         }
+        sendNewPostToTelegram();
     }
 
-    @Scheduled(cron = "0 8 * * *")
+    @Scheduled(cron = "@daily")
     public void sendNewPostToTelegram() {
-        initBot();
         final InstagramPostDTO instagramPostDTO = instagramService.getNewMostLikedPostFromRandomAccount();
         final TelegramPost telegramPost = new TelegramPost(instagramPostDTO.getInstagramPost());
         sendContentToChat(telegramPost, instagramPostDTO.getInstagramAccountURL());
@@ -171,10 +171,13 @@ public class TelegramService {
     }
 
     private boolean updateContainsValidVote(final Update update) {
+        if (update.callbackQuery() == null) {
+            return false;
+        }
         final boolean isUpdateGirl = update.callbackQuery().data().equals(UPDATE_MESSAGE);
         final boolean isNewUserVote =
                 telegramVoteRepository.findByTelegramUserIdAndTelegramPost(update.callbackQuery().from().id(),
-                        telegramPostRepository.findTopByOrderByIdDesc());
+                        telegramPostRepository.findTopByOrderByIdDesc()) != null;
         return isUpdateGirl && isNewUserVote;
     }
 

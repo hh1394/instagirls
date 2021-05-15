@@ -18,9 +18,6 @@ public class TelegramPost {
     @GeneratedValue(strategy = GenerationType.AUTO)
     private Long id;
 
-    @ManyToOne(optional = false)
-    private TelegramChat telegramChat;
-
     @OneToOne(optional = false)
     private InstagramPost instagramPost;
 

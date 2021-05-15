@@ -9,7 +9,7 @@ import java.util.List;
 
 @Repository
 public interface TelegramVoteRepository extends CrudRepository<TelegramVote, Long> {
-    boolean findByTelegramUserIdAndTelegramPost(final Integer id, final TelegramPost byCurrentTrue);
+    TelegramVote findByTelegramUserIdAndTelegramPost(final Integer id, final TelegramPost byCurrentTrue);
 
     List<TelegramVote> findByTelegramPost(final TelegramPost currentPost);
 }

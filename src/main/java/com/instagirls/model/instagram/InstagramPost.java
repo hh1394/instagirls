@@ -22,7 +22,7 @@ public class InstagramPost {
     @Column(nullable = false, unique = true)
     private String instagramPostId;
 
-    @OneToMany
+    @OneToMany(fetch = FetchType.EAGER)
     private List<InstagramMedia> instagramMedia;
 
     @Column(nullable = false)

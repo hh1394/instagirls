@@ -23,7 +23,7 @@ public class InstagramAccount {
     @Column(unique = true)
     private Long instagramPk;
 
-    @OneToMany
+    @OneToMany(fetch = FetchType.EAGER)
     private List<InstagramPost> instagramPosts;
 
     @Column(nullable = false)

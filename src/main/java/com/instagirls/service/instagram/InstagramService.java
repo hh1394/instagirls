@@ -46,7 +46,6 @@ public class InstagramService {
     @Autowired
     private InstagramMediaRepository instagramMediaRepository;
 
-    @PostConstruct
     private void login() {
         if (igClient == null || !igClient.isLoggedIn()) {
             LOGGER.info("IG Client not logged in!");
