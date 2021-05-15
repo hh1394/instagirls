@@ -1,40 +1,52 @@
 package com.instagirls.service.telegram;
 
+import com.instagirls.dto.InstagramPostDTO;
+import com.instagirls.model.instagram.InstagramMedia;
+import com.instagirls.model.telegram.TelegramPost;
+import com.instagirls.model.telegram.TelegramVote;
+import com.instagirls.repository.TelegramPostRepository;
+import com.instagirls.repository.TelegramVoteRepository;
 import com.instagirls.service.instagram.InstagramService;
-import com.instagirls.service.telegram.entity.Media;
-import com.instagirls.service.telegram.entity.TelegramPost;
+import com.instagirls.util.PostMapper;
 import com.pengrad.telegrambot.TelegramBot;
 import com.pengrad.telegrambot.model.Update;
-import com.pengrad.telegrambot.model.request.*;
-import com.pengrad.telegrambot.request.*;
-import com.pengrad.telegrambot.response.GetUpdatesResponse;
+import com.pengrad.telegrambot.model.request.InlineKeyboardButton;
+import com.pengrad.telegrambot.model.request.InlineKeyboardMarkup;
+import com.pengrad.telegrambot.model.request.InputMedia;
+import com.pengrad.telegrambot.model.request.InputMediaPhoto;
+import com.pengrad.telegrambot.request.EditMessageReplyMarkup;
+import com.pengrad.telegrambot.request.SendMediaGroup;
+import com.pengrad.telegrambot.request.SendMessage;
 import com.pengrad.telegrambot.response.SendResponse;
-import lombok.SneakyThrows;
 import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.scheduling.annotation.Scheduled;
+import org.springframework.stereotype.Service;
 
-import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.nio.file.StandardOpenOption;
+import javax.annotation.PostConstruct;
 import java.util.ArrayList;
-import java.util.HashSet;
 import java.util.List;
-import java.util.Set;
-import java.util.stream.Collectors;
 
-import static com.instagirls.util.PropertiesUtil.CHATS_FILE_URL;
-
+@Service
 public class TelegramService {
+
     private static final Logger LOGGER = LoggerFactory.getLogger(TelegramService.class);
     private static final String UPDATE_MESSAGE = "send_new_girl";
-    private int newGirlCounter = 0;
+    private static final String CHAT_ID = System.getenv("chat_id");
     private TelegramBot bot;
-    private Set<Long> chatIds;
-    private Set<Integer> votedUsersIds = new HashSet<>();
 
+    @Autowired
+    private TelegramVoteRepository telegramVoteRepository;
+
+    @Autowired
+    private TelegramPostRepository telegramPostRepository;
+
+    @Autowired
+    private InstagramService instagramService;
+
+    @PostConstruct
     private void initBot() {
         LOGGER.info("Initializing bot..");
         if (bot == null) {
@@ -44,7 +56,17 @@ public class TelegramService {
         } else {
             LOGGER.info("Bot already initialized.");
         }
+    }
 
+    @Scheduled(cron = "0 8 * * *")
+    public void sendNewPostToTelegram() {
+        initBot();
+        final InstagramPostDTO instagramPostDTO = instagramService.getNewMostLikedPostFromRandomAccount();
+        final TelegramPost telegramPost = new TelegramPost(instagramPostDTO.getInstagramPost());
+        sendContentToChat(telegramPost, instagramPostDTO.getInstagramAccountURL());
+
+        telegramPostRepository.save(telegramPost);
+        instagramService.setPosted(telegramPost.getInstagramPost());
     }
 
     private int processUpdates(final List<Update> updates) {
@@ -55,101 +77,45 @@ public class TelegramService {
 
     private void processUpdate(final Update update) {
         if (updateContainsValidVote(update)) {
-            ++newGirlCounter;
-            votedUsersIds.add(update.callbackQuery().from().id());
+            final TelegramVote telegramVote = PostMapper.mapToTelegramVote(update);
+            telegramVoteRepository.save(telegramVote);
             LOGGER.info("Got request for a new girl!");
-            LOGGER.info("Current counter: " + newGirlCounter);
             LOGGER.info("User: " + update.callbackQuery().from());
-
-            if (newGirlCounter < 4) {
-                incrementMessageReplyMarkup(update);
-            } else {
-                newGirlCounter = 0;
-                votedUsersIds = new HashSet<>();
-                removeVoteFromMessageReplyMarkup(update);
-                final TelegramPost telegramPost = new InstagramService().generatePost();
-                this.postToTelegram(telegramPost);
-            }
+            checkVotes();
         }
     }
 
-    private void removeVoteFromMessageReplyMarkup(final Update update) {
-        final EditMessageReplyMarkup editMessageReplyMarkup =
-                new EditMessageReplyMarkup(update.callbackQuery().message().chat().id(),
-                        update.callbackQuery().message().messageId());
-
-        final InlineKeyboardMarkup replyKeyboardMarkup = new InlineKeyboardMarkup();
-
-        final InlineKeyboardButton girlAccountUrlKeyboardButton = buildGirlLinkKeyboardButton(update.callbackQuery().message().replyMarkup().inlineKeyboard()[0][0].url());
-        replyKeyboardMarkup.addRow(girlAccountUrlKeyboardButton);
-        editMessageReplyMarkup.replyMarkup(replyKeyboardMarkup);
-        bot.execute(editMessageReplyMarkup);
-    }
-
-    private void incrementMessageReplyMarkup(final Update update) {
-        final EditMessageReplyMarkup editMessageReplyMarkup =
-                new EditMessageReplyMarkup(update.callbackQuery().message().chat().id(),
-                        update.callbackQuery().message().messageId());
-
-        final InlineKeyboardMarkup replyKeyboardMarkup =
-                getReplyInlineKeyboardMarkup(
-                        update.callbackQuery().message().replyMarkup().inlineKeyboard()[0][0].url());
-
-        editMessageReplyMarkup.replyMarkup(replyKeyboardMarkup);
-        bot.execute(editMessageReplyMarkup);
-    }
-
-    private boolean updateContainsValidVote(final Update update) {
-        final boolean isUpdateGirl = update.callbackQuery().data().equals(UPDATE_MESSAGE);
-        final boolean isNewUserVote = !votedUsersIds.contains(update.callbackQuery().from().id());
-        return isUpdateGirl && isNewUserVote;
-    }
-
-    public void postToTelegram(TelegramPost telegramPost) {
-        initBot();
-        loadChatIds();
-        sendContentToChats(telegramPost);
-        InstagramService.setPosted(telegramPost.getInstagramPostId());
-    }
-
-    private void sendContentToChats(final TelegramPost telegramPost) {
-        for (Long chatId : chatIds) {
-            sendContentToChat(telegramPost, chatId);
+    private void checkVotes() {
+        if (isEnoughVotes()) {
+            sendNewPostToTelegram();
         }
     }
 
-    private void sendContentToChat(final TelegramPost telegramPost, final Long chatId) {
-        sendMedia(telegramPost, chatId);
-        sendCaptionWithReplyKeyboardMarkup(telegramPost, chatId);
+    private void sendContentToChat(final TelegramPost telegramPost, final String instagramAccountURL) {
+        sendMedia(telegramPost);
+        sendCaptionWithReplyKeyboardMarkup(telegramPost, instagramAccountURL);
     }
 
-    private void sendMedia(final TelegramPost telegramPost, final Long chatId) {
-        final List<InputMedia<?>> medias = mapMedias(telegramPost);
-        final SendMediaGroup request = new SendMediaGroup(chatId, medias.toArray(new InputMedia[0]));
-        bot.execute(request);
+    private void sendCaptionWithReplyKeyboardMarkup(final TelegramPost telegramPost, final String instagramAccountURL) {
+        final SendResponse response = sendCaption(telegramPost);
+        addReplyKeyboardMarkup(response, instagramAccountURL);
     }
 
-    private void sendCaptionWithReplyKeyboardMarkup(final TelegramPost telegramPost, final Long chatId) {
-        final SendResponse response = sendCaption(telegramPost, chatId);
-        addReplyKeyboardMarkup(telegramPost, chatId, response);
+    private void addReplyKeyboardMarkup(final SendResponse response, final String instagramAccountURL) {
+        final InlineKeyboardMarkup replyKeyboardMarkup = getReplyInlineKeyboardMarkup(instagramAccountURL);
+        sendReplyKeyboardMarkup(response, replyKeyboardMarkup);
     }
 
-    private void addReplyKeyboardMarkup(final TelegramPost telegramPost, final Long chatId, final SendResponse response) {
-
-        final InlineKeyboardMarkup replyKeyboardMarkup = getReplyInlineKeyboardMarkup(telegramPost.getGirlAccountURL());
-        sendReplyKeyboardMarkup(chatId, response, replyKeyboardMarkup);
-    }
-
-    private void sendReplyKeyboardMarkup(final Long chatId, final SendResponse response, final InlineKeyboardMarkup replyKeyboardMarkup) {
+    private void sendReplyKeyboardMarkup(final SendResponse response, final InlineKeyboardMarkup replyKeyboardMarkup) {
         final Integer messageId = response.message().messageId();
-        final EditMessageReplyMarkup editMessageReplyMarkup = new EditMessageReplyMarkup(chatId, messageId);
+        final EditMessageReplyMarkup editMessageReplyMarkup = new EditMessageReplyMarkup(CHAT_ID, messageId);
         editMessageReplyMarkup.replyMarkup(replyKeyboardMarkup);
         bot.execute(editMessageReplyMarkup);
     }
 
     @NotNull
-    private InlineKeyboardMarkup getReplyInlineKeyboardMarkup(final String girlAccountURL) {
-        final InlineKeyboardButton girlAccountUrlKeyboardButton = buildGirlLinkKeyboardButton(girlAccountURL);
+    private InlineKeyboardMarkup getReplyInlineKeyboardMarkup(final String instagramAccountURL) {
+        final InlineKeyboardButton girlAccountUrlKeyboardButton = buildInstagramAccountLinkKeyboardButton(instagramAccountURL);
         final InlineKeyboardButton voteKeyboardButton = buildVoteKeyboardButton();
         return buildKeyboardMarkup(girlAccountUrlKeyboardButton, voteKeyboardButton);
     }
@@ -163,79 +129,53 @@ public class TelegramService {
     }
 
     @NotNull
-    private InlineKeyboardButton buildGirlLinkKeyboardButton(final String girlAccountURL) {
-        final InlineKeyboardButton girlAccountUrlKeyboardButton = new InlineKeyboardButton("Girl Instagram");
-        girlAccountUrlKeyboardButton.url(girlAccountURL);
-        return girlAccountUrlKeyboardButton;
-    }
-
-    @NotNull
     private InlineKeyboardButton buildVoteKeyboardButton() {
-        final InlineKeyboardButton voteKeyboardButton = new InlineKeyboardButton(String.format("Send New Girl! (%s\\4)", newGirlCounter));
+        final int newTelegramPostCounter = telegramVoteRepository.findByTelegramPost(telegramPostRepository.findTopByOrderByIdDesc()).size();
+        final InlineKeyboardButton voteKeyboardButton = new InlineKeyboardButton(String.format("Send New Girl! (%s\\4)", newTelegramPostCounter));
         voteKeyboardButton.callbackData(UPDATE_MESSAGE);
         return voteKeyboardButton;
     }
 
-    private SendResponse sendCaption(final TelegramPost telegramPost, final Long chatId) {
-        final SendMessage sendMessage = new SendMessage(chatId, telegramPost.getCaption() != null ? telegramPost.getCaption() : "(NO CAPTION)");
+    @NotNull
+    private InlineKeyboardButton buildInstagramAccountLinkKeyboardButton(final String instagramAccountURL) {
+        final InlineKeyboardButton girlAccountUrlKeyboardButton = new InlineKeyboardButton("Girl Instagram");
+        girlAccountUrlKeyboardButton.url(instagramAccountURL);
+        return girlAccountUrlKeyboardButton;
+    }
+
+    private SendResponse sendCaption(final TelegramPost telegramPost) {
+        final SendMessage sendMessage = new SendMessage(CHAT_ID, telegramPost.getInstagramPost().getCaption());
         return bot.execute(sendMessage);
+    }
+
+    private void sendMedia(final TelegramPost telegramPost) {
+        final List<InputMedia<?>> medias = mapMedias(telegramPost);
+        final SendMediaGroup request = new SendMediaGroup(CHAT_ID, medias.toArray(new InputMedia[0]));
+        bot.execute(request);
     }
 
     private List<InputMedia<?>> mapMedias(final TelegramPost telegramPost) {
         final List<InputMedia<?>> inputMedia = new ArrayList<>();
-        for (Media instagramPostMedia : telegramPost.getInstagramPostMedias()) {
+        for (InstagramMedia instagramPostMedia : telegramPost.getInstagramPost().getInstagramMedia()) {
             InputMediaPhoto photo = new InputMediaPhoto(instagramPostMedia.getUrl());
             inputMedia.add(photo);
         }
         return inputMedia;
     }
 
-    @SneakyThrows
-    private void loadChatIds() {
-        if (chatIds == null) {
-            chatIds = Files.lines(Paths.get(System.getenv(CHATS_FILE_URL)))
-                    .map(Long::new)
-                    .collect(Collectors.toSet());
-            LOGGER.info("Loaded chats!");
-        } else {
-            LOGGER.info("No need to load chats!");
 
-        }
+    private boolean isEnoughVotes() {
+        final TelegramPost currentPost = telegramPostRepository.findTopByOrderByIdDesc();
+        List<TelegramVote> votes = telegramVoteRepository.findByTelegramPost(currentPost);
+        return votes.size() > 3;
     }
 
-    public void updateChats() throws IOException {
-        loadChatIds();
-        initBot();
-        final Set<Long> chatsWithUpdates = getChatsWithUpdates();
-        Set<Long> newChatIds = chatsWithUpdates.stream().filter(chatId -> !chatIds.contains(chatId)).collect(Collectors.toSet());
-        LOGGER.info("Detected " + newChatIds.size() + " new chats");
-        chatIds.addAll(chatsWithUpdates);
-        saveChatIds(newChatIds);
+    private boolean updateContainsValidVote(final Update update) {
+        final boolean isUpdateGirl = update.callbackQuery().data().equals(UPDATE_MESSAGE);
+        final boolean isNewUserVote =
+                telegramVoteRepository.findByTelegramUserIdAndTelegramPost(update.callbackQuery().from().id(),
+                        telegramPostRepository.findTopByOrderByIdDesc());
+        return isUpdateGirl && isNewUserVote;
     }
 
-    //TODO optimize
-    private void saveChatIds(final Set<Long> newChatIds) throws IOException {
-        if (newChatIds != null && !newChatIds.isEmpty()) {
-            final Path path = Paths.get(System.getenv(CHATS_FILE_URL));
-            for (final Long chatId : newChatIds) {
-                Files.write(path,
-                        (chatId + "\n").getBytes(),
-                        StandardOpenOption.APPEND);
-            }
-        }
-    }
-
-    private Set<Long> getChatsWithUpdates() {
-        final GetUpdatesResponse updates = bot.execute(new GetUpdates());
-        final Set<Long> chatIds = new HashSet<>();
-        updates.updates()
-                .forEach(update -> {
-                    if (update.myChatMember() != null) {
-                        chatIds.add(update.myChatMember().chat().id());
-                    }
-                });
-
-        LOGGER.info(String.format("Chats with updates: %s", chatIds));
-        return chatIds;
-    }
 }
