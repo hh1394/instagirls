@@ -5,6 +5,7 @@ import com.github.instagram4j.instagram4j.exceptions.IGLoginException;
 import com.github.instagram4j.instagram4j.models.media.timeline.TimelineMedia;
 import com.github.instagram4j.instagram4j.requests.feed.FeedUserRequest;
 import com.github.instagram4j.instagram4j.responses.feed.FeedUserResponse;
+import com.instagirls.dto.InstagramPostDTO;
 import com.instagirls.exception.LoginFailedException;
 import com.instagirls.exception.SleepFailedException;
 import com.instagirls.model.instagram.InstagramAccount;
@@ -33,7 +34,6 @@ import static com.instagirls.model.instagram.InstagramPost.DEFAULT_CAPTION;
 public class InstagramServiceNew {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(InstagramServiceNew.class);
-    private static final Random random = new Random();
     private static IGClient igClient;
     private static int loginRetryCounter = 0;
 
@@ -58,7 +58,7 @@ public class InstagramServiceNew {
     }
 
     @NotNull
-    public InstagramPost getNewMostLikedPostFromRandomAccount() {
+    public InstagramPostDTO getNewMostLikedPostFromRandomAccount() {
         final InstagramAccount instagramAccount = getRandomAccount();
         Optional<InstagramPost> instagramPost = instagramAccount.getInstagramPosts().stream()
                 .sorted(Comparator.comparingInt(InstagramPost::getLikes))
@@ -67,7 +67,10 @@ public class InstagramServiceNew {
         if (instagramPost.isPresent()) {
             InstagramPost post = instagramPost.get();
             LOGGER.info("New most like post ID: " + post.getId());
-            return post;
+            return InstagramPostDTO.builder()
+                    .instagramPost(post)
+                    .instagramAccountURL("https://www.instagram.com/" + instagramAccount.getUsername() + "/")
+                    .build();
         } else {
             disableAccount(instagramAccount);
             return getNewMostLikedPostFromRandomAccount();
@@ -194,4 +197,8 @@ public class InstagramServiceNew {
         }
     }
 
+    public void setPosted(final InstagramPost instagramPost) {
+        instagramPost.setPosted(true);
+        instagramPostRepository.save(instagramPost);
+    }
 }

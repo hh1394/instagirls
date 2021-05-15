@@ -24,13 +24,17 @@ public class TelegramPost {
     @OneToOne(optional = false)
     private InstagramPost instagramPost;
 
-    @Column
-    private Integer votesForNewPost;
-
     @CreationTimestamp
     private LocalDateTime createdAt;
 
     @UpdateTimestamp
     private LocalDateTime updatedAt;
 
+    public TelegramPost(final InstagramPost instagramPost) {
+        this.instagramPost = instagramPost;
+    }
+
+    public TelegramPost() {
+
+    }
 }
