@@ -5,5 +5,5 @@ import org.springframework.data.repository.CrudRepository;
 import org.springframework.stereotype.Repository;
 
 @Repository
-public interface TelegramPostRepository extends CrudRepository<TelegramPost, String> {
+public interface TelegramPostRepository extends CrudRepository<TelegramPost, Long> {
 }

@@ -1,28 +1,32 @@
 package com.instagirls.service.instagram;
 
 import com.github.instagram4j.instagram4j.IGClient;
+import com.github.instagram4j.instagram4j.exceptions.IGLoginException;
 import com.github.instagram4j.instagram4j.models.media.timeline.TimelineMedia;
 import com.github.instagram4j.instagram4j.requests.feed.FeedUserRequest;
 import com.github.instagram4j.instagram4j.responses.feed.FeedUserResponse;
+import com.instagirls.exception.LoginFailedException;
+import com.instagirls.exception.SleepFailedException;
 import com.instagirls.model.instagram.InstagramAccount;
+import com.instagirls.model.instagram.InstagramMedia;
 import com.instagirls.model.instagram.InstagramPost;
 import com.instagirls.repository.InstagramAccountRepository;
+import com.instagirls.repository.InstagramMediaRepository;
 import com.instagirls.repository.InstagramPostRepository;
 import com.instagirls.util.InstagramMediaExtractor;
 import lombok.SneakyThrows;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import javax.annotation.PostConstruct;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Random;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
+
+import static com.instagirls.model.instagram.InstagramPost.DEFAULT_CAPTION;
 
 @Service
 public class InstagramServiceNew {
@@ -30,12 +34,22 @@ public class InstagramServiceNew {
     private static final Logger LOGGER = LoggerFactory.getLogger(InstagramServiceNew.class);
     private static final Random random = new Random();
     private static IGClient igClient;
+    private static int loginRetryCounter = 0;
+
 
     @Autowired
     private InstagramAccountRepository instagramAccountRepository;
 
     @Autowired
     private InstagramPostRepository instagramPostRepository;
+
+    @Autowired
+    private InstagramMediaRepository instagramMediaRepository;
+
+    public void test() {
+        long count = instagramAccountRepository.findById(1L).get().getInstagramPosts().stream().mapToLong(ip -> ip.getInstagramMedia().size()).sum();
+        LOGGER.info("COUNT: " + count);
+    }
 
     @PostConstruct
     public void loadPostsForAccounts() {
@@ -48,6 +62,31 @@ public class InstagramServiceNew {
     }
 
     private void loadAllAccounts() {
+        LOGGER.info("Loading all accounts..");
+
+        List<String> accounts = new ArrayList<>();
+        accounts.add("lanarhoades");
+        accounts.add("natalee.007");
+        accounts.add("oabramovich");
+        accounts.add("alexisren");
+        accounts.add("Gabbywestbrook");
+        accounts.add("mathildtantot");
+        accounts.add("cayleecowan");
+        accounts.add("sophiemudd");
+        accounts.add("demirose");
+//        accounts.add("daisykeech");
+//        accounts.add("rachelc00k");
+//        accounts.add("magui_ansuz");
+//        accounts.add("you___fit");
+//        accounts.add("elena.berlato");
+//        accounts.add("sophie_xdt");
+//        accounts.add("daria.plane");
+//        accounts.add("ale.valerya");
+
+        accounts.stream()
+                .map(InstagramAccount::new)
+                .forEach(instagramAccountRepository::save);
+        LOGGER.info("Done loading all accounts!");
 
     }
 
@@ -70,19 +109,27 @@ public class InstagramServiceNew {
             LOGGER.info("Overall: " + items.size());
             LOGGER.info("Loading more posts!");
         }
+        LOGGER.info("Done loading posts!");
 
-        List<InstagramPost> instagramPosts = items.stream().map(i -> mapToInstagramPost(i, instagramAccount)).collect(Collectors.toList());
-        instagramPostRepository.saveAll(instagramPosts);
+        List<InstagramPost> instagramPosts = items.stream().map(this::saveAsInstagramPostWithMedia).collect(Collectors.toList());
+        instagramAccount.setInstagramPosts(instagramPosts);
+        instagramAccountRepository.save(instagramAccount);
     }
 
-    private InstagramPost mapToInstagramPost(final TimelineMedia timelineMedia, final InstagramAccount instagramAccount) {
+    private InstagramPost saveAsInstagramPostWithMedia(final TimelineMedia timelineMedia) {
+
+        List<InstagramMedia> instagramMedia = InstagramMediaExtractor.extractMedia(timelineMedia);
+        instagramMediaRepository.saveAll(instagramMedia);
+
         InstagramPost instagramPost = new InstagramPost();
-        instagramPost.setInstagramMedia(InstagramMediaExtractor.extractMedia(timelineMedia));
+
         instagramPost.setInstagramPostId(timelineMedia.getId());
-        instagramPost.setInstagramAccount(instagramAccount);
         instagramPost.setPosted(false);
-        instagramPost.setCaption(timelineMedia.getCaption().getText());
+        instagramPost.setCaption(timelineMedia.getCaption() != null ? timelineMedia.getCaption().getText() : DEFAULT_CAPTION);
         instagramPost.setLikes(timelineMedia.getLike_count());
+        instagramPost.setInstagramMedia(instagramMedia);
+        instagramPostRepository.save(instagramPost);
+
         return instagramPost;
     }
 
@@ -126,14 +173,40 @@ public class InstagramServiceNew {
         }
     }
 
-    @SneakyThrows
     private void performLogin() {
         LOGGER.info("Performing login.. ");
+        try {
+            loginToInstagram();
+        } catch (final IGLoginException e) {
+            if (loginRetryCounter < 3) {
+                retryLogin();
+            } else {
+                throw new LoginFailedException("Login failed after 3 retries!", e);
+            }
+        }
+        LOGGER.info("Login performed.");
+    }
+
+    private void retryLogin() {
+        ++loginRetryCounter;
+        LOGGER.info("Login failed. Retrying in 1 minute..");
+        sleep(1);
+        performLogin();
+    }
+
+    private void loginToInstagram() throws IGLoginException {
         igClient = IGClient.builder()
                 .username(System.getenv("instagram_username"))
                 .password(System.getenv("instagram_password"))
                 .login();
-        LOGGER.info("Login performed.");
+    }
+
+    private void sleep(final int minutes) {
+        try {
+            Thread.sleep(TimeUnit.MINUTES.toMillis(minutes));
+        } catch (final InterruptedException interruptedException) {
+            throw new SleepFailedException("Login sleep failed.", interruptedException);
+        }
     }
 
 }

@@ -1,8 +1,8 @@
 package com.instagirls.model.instagram;
 
 import lombok.Data;
+import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
-import org.springframework.data.annotation.CreatedDate;
 
 import javax.persistence.*;
 import java.time.LocalDateTime;
@@ -13,9 +13,11 @@ import java.util.List;
 @Data
 public class InstagramPost {
 
+    public static final String DEFAULT_CAPTION = "(NO CAPTION)";
+
     @Id
     @GeneratedValue(strategy = GenerationType.AUTO)
-    private String id;
+    private Long id;
 
     @Column(nullable = false, unique = true)
     private String instagramPostId;
@@ -23,22 +25,21 @@ public class InstagramPost {
     @OneToMany
     private List<InstagramMedia> instagramMedia;
 
-    @ManyToOne
-    private InstagramAccount instagramAccount;
-
     @Column(nullable = false)
     private Integer likes = 0;
 
     @Column(nullable = false)
     private boolean posted = false;
 
-    @Column
-    private String caption = "(NO CAPTION)";
+    @Column(columnDefinition = "text")
+    private String caption = DEFAULT_CAPTION;
 
-    @CreatedDate
+    @CreationTimestamp
     private LocalDateTime createdAt;
 
     @UpdateTimestamp
     private LocalDateTime updatedAt;
 
+    public InstagramPost() {
+    }
 }

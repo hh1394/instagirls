@@ -1,8 +1,8 @@
 package com.instagirls.model.telegram;
 
 import lombok.Data;
+import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
-import org.springframework.data.annotation.CreatedDate;
 
 import javax.persistence.*;
 import java.time.LocalDateTime;
@@ -13,8 +13,8 @@ import java.time.LocalDateTime;
 public class TelegramChat {
 
     @Id
-    @GeneratedValue(strategy= GenerationType.AUTO)
-    private String id;
+    @GeneratedValue(strategy = GenerationType.AUTO)
+    private Long id;
 
     @Column(nullable = false, unique = true)
     private String telegramChatId;
@@ -22,7 +22,7 @@ public class TelegramChat {
     @Column(nullable = false)
     private boolean isActive = true;
 
-    @CreatedDate
+    @CreationTimestamp
     private LocalDateTime createdAt;
 
     @UpdateTimestamp

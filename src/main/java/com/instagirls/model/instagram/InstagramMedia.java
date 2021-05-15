@@ -1,9 +1,8 @@
 package com.instagirls.model.instagram;
 
-import lombok.Builder;
 import lombok.Data;
+import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
-import org.springframework.data.annotation.CreatedDate;
 
 import javax.persistence.*;
 import java.time.LocalDateTime;
@@ -11,23 +10,26 @@ import java.time.LocalDateTime;
 @Entity
 @Table
 @Data
-@Builder
 public class InstagramMedia {
 
     @Id
     @GeneratedValue(strategy = GenerationType.AUTO)
-    private String id;
+    private Long id;
 
-    @Column(nullable = false, unique = true)
+    @Column(nullable = false, columnDefinition = "text", length = 512)
     private String url;
 
-    @ManyToOne
-    private InstagramPost instagramPost;
-
-    @CreatedDate
+    @CreationTimestamp
     private LocalDateTime createdAt;
 
     @UpdateTimestamp
     private LocalDateTime updatedAt;
 
+    public InstagramMedia() {
+
+    }
+
+    public InstagramMedia(final String url) {
+        this.url = url;
+    }
 }

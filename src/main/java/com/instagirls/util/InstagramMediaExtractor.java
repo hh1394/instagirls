@@ -15,13 +15,13 @@ public class InstagramMediaExtractor {
         final List<InstagramMedia> medias = new ArrayList<>();
         if (timelineMedia instanceof TimelineImageMedia) {
             final String mediaURL = getMediaURL(timelineMedia, MediaType.PHOTO);
-            medias.add(InstagramMedia.builder().url(mediaURL).build());
+            medias.add(new InstagramMedia(mediaURL));
         } else if (timelineMedia instanceof TimelineVideoMedia) {
             final String mediaURL = getMediaURL(timelineMedia, MediaType.VIDEO);
-            medias.add(InstagramMedia.builder().url(mediaURL).build());
+            medias.add(new InstagramMedia(mediaURL));
         } else if (timelineMedia instanceof TimelineCarouselMedia) {
             List<String> carouselMedias = getCarouselMedia((TimelineCarouselMedia) timelineMedia);
-            medias.addAll(carouselMedias.stream().map(cm -> InstagramMedia.builder().url(cm).build()).collect(Collectors.toList()));
+            medias.addAll(carouselMedias.stream().map(InstagramMedia::new).collect(Collectors.toList()));
         }
         return medias;
     }

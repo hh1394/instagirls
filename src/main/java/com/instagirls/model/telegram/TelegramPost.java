@@ -3,8 +3,8 @@ package com.instagirls.model.telegram;
 
 import com.instagirls.model.instagram.InstagramPost;
 import lombok.Data;
+import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
-import org.springframework.data.annotation.CreatedDate;
 
 import javax.persistence.*;
 import java.time.LocalDateTime;
@@ -16,7 +16,7 @@ public class TelegramPost {
 
     @Id
     @GeneratedValue(strategy = GenerationType.AUTO)
-    private String id;
+    private Long id;
 
     @ManyToOne(optional = false)
     private TelegramChat telegramChat;
@@ -27,7 +27,7 @@ public class TelegramPost {
     @Column
     private Integer votesForNewPost;
 
-    @CreatedDate
+    @CreationTimestamp
     private LocalDateTime createdAt;
 
     @UpdateTimestamp

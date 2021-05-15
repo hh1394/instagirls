@@ -5,5 +5,5 @@ import org.springframework.data.repository.CrudRepository;
 import org.springframework.stereotype.Repository;
 
 @Repository
-public interface InstagramAccountRepository extends CrudRepository<InstagramAccount, String> {
+public interface InstagramAccountRepository extends CrudRepository<InstagramAccount, Long> {
 }

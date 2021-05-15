@@ -5,5 +5,5 @@ import org.springframework.data.repository.CrudRepository;
 import org.springframework.stereotype.Repository;
 
 @Repository
-public interface TelegramChatRepository extends CrudRepository<TelegramChat, String> {
+public interface TelegramChatRepository extends CrudRepository<TelegramChat, Long> {
 }

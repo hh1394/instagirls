@@ -1,8 +1,8 @@
 package com.instagirls.model.instagram;
 
 import lombok.Data;
+import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
-import org.springframework.data.annotation.CreatedDate;
 
 import javax.persistence.*;
 import java.time.LocalDateTime;
@@ -15,7 +15,7 @@ public class InstagramAccount {
 
     @Id
     @GeneratedValue(strategy = GenerationType.AUTO)
-    private String id;
+    private Long id;
 
     @Column(nullable = false, unique = true)
     private String username;
@@ -29,10 +29,17 @@ public class InstagramAccount {
     @Column(nullable = false)
     private boolean isActive = true;
 
-    @CreatedDate
+    @CreationTimestamp
     private LocalDateTime createdAt;
 
     @UpdateTimestamp
     private LocalDateTime updatedAt;
 
+    public InstagramAccount(final String username) {
+        this.username = username;
+    }
+
+    public InstagramAccount() {
+
+    }
 }
