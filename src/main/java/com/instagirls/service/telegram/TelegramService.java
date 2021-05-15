@@ -61,11 +61,12 @@ public class TelegramService {
 
     @Scheduled(cron = "@daily")
     public void sendNewPostToTelegram() {
+        telegramVoteRepository.deleteAll();
         final InstagramPostDTO instagramPostDTO = instagramService.getNewMostLikedPostFromRandomAccount();
-        final TelegramPost telegramPost = new TelegramPost(instagramPostDTO.getInstagramPost());
+        TelegramPost telegramPost = new TelegramPost(instagramPostDTO.getInstagramPost());
+        telegramPost = telegramPostRepository.save(telegramPost);
         sendContentToChat(telegramPost, instagramPostDTO.getInstagramAccountURL());
 
-        telegramPostRepository.save(telegramPost);
         instagramService.setPosted(telegramPost.getInstagramPost());
     }
 
@@ -78,7 +79,7 @@ public class TelegramService {
     private void processUpdate(final Update update) {
         if (updateContainsValidVote(update)) {
             final TelegramVote telegramVote = PostMapper.mapToTelegramVote(update);
-            telegramVote.setTelegramPost(telegramPostRepository.findTopByOrderById());
+            telegramVote.setTelegramPost(telegramPostRepository.findTopByOrderByIdDesc());
             telegramVoteRepository.save(telegramVote);
             LOGGER.info("Got request for a new girl!");
             LOGGER.info("User: " + update.callbackQuery().from());
@@ -160,7 +161,7 @@ public class TelegramService {
 
     @NotNull
     private InlineKeyboardButton buildVoteKeyboardButton() {
-        final int newTelegramPostCounter = telegramVoteRepository.findByTelegramPost(telegramPostRepository.findTopByOrderById()).size();
+        final int newTelegramPostCounter = telegramVoteRepository.findByTelegramPost(telegramPostRepository.findTopByOrderByIdDesc()).size();
         final InlineKeyboardButton voteKeyboardButton = new InlineKeyboardButton(String.format("Send New Girl! (%s\\4)", newTelegramPostCounter));
         voteKeyboardButton.callbackData(UPDATE_MESSAGE);
         return voteKeyboardButton;
@@ -195,7 +196,7 @@ public class TelegramService {
 
 
     private boolean isEnoughVotes() {
-        final TelegramPost currentPost = telegramPostRepository.findTopByOrderById();
+        final TelegramPost currentPost = telegramPostRepository.findTopByOrderByIdDesc();
         List<TelegramVote> votes = telegramVoteRepository.findByTelegramPost(currentPost);
         return votes.size() > 3;
     }
@@ -207,7 +208,7 @@ public class TelegramService {
         final boolean isUpdateGirl = update.callbackQuery().data().equals(UPDATE_MESSAGE);
         final boolean isNewUserVote =
                 telegramVoteRepository.findByTelegramUserIdAndTelegramPost(update.callbackQuery().from().id(),
-                        telegramPostRepository.findTopByOrderByIdDesc()) != null;
+                        telegramPostRepository.findTopByOrderById()) == null;
         return isUpdateGirl && isNewUserVote;
     }
 
