@@ -22,7 +22,6 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
-import javax.annotation.PostConstruct;
 import java.util.*;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
@@ -64,7 +63,7 @@ public class InstagramService {
                 .findFirst();
         if (instagramPost.isPresent()) {
             InstagramPost post = instagramPost.get();
-            LOGGER.info("New most like post ID: " + post.getId());
+            LOGGER.info("New most liked post ID: " + post.getId());
             return InstagramPostDTO.builder()
                     .instagramPost(post)
                     .instagramAccountURL("https://www.instagram.com/" + instagramAccount.getUsername() + "/")
