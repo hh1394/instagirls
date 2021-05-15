@@ -15,7 +15,7 @@ import java.time.LocalDateTime;
 public class TelegramPost {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.AUTO)
+    @GeneratedValue(strategy = GenerationType.TABLE)
     private Long id;
 
     @OneToOne(optional = false)

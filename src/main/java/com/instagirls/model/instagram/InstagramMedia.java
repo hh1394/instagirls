@@ -13,7 +13,7 @@ import java.time.LocalDateTime;
 public class InstagramMedia {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.AUTO)
+    @GeneratedValue(strategy = GenerationType.TABLE)
     private Long id;
 
     @Column(nullable = false, columnDefinition = "text", length = 512)

@@ -78,17 +78,47 @@ public class TelegramService {
     private void processUpdate(final Update update) {
         if (updateContainsValidVote(update)) {
             final TelegramVote telegramVote = PostMapper.mapToTelegramVote(update);
+            telegramVote.setTelegramPost(telegramPostRepository.findTopByOrderById());
             telegramVoteRepository.save(telegramVote);
             LOGGER.info("Got request for a new girl!");
             LOGGER.info("User: " + update.callbackQuery().from());
-            checkVotes();
+            checkVote(update);
         }
     }
 
-    private void checkVotes() {
+    private void checkVote(final Update update) {
         if (isEnoughVotes()) {
+            removeVoteFromMessageReplyMarkup(update);
             sendNewPostToTelegram();
+        }else{
+            incrementMessageReplyMarkup(update);
         }
+    }
+
+    private void removeVoteFromMessageReplyMarkup(final Update update) {
+        final EditMessageReplyMarkup editMessageReplyMarkup =
+                new EditMessageReplyMarkup(update.callbackQuery().message().chat().id(),
+                        update.callbackQuery().message().messageId());
+
+        final InlineKeyboardMarkup replyKeyboardMarkup = new InlineKeyboardMarkup();
+
+        final InlineKeyboardButton girlAccountUrlKeyboardButton = buildInstagramAccountLinkKeyboardButton(update.callbackQuery().message().replyMarkup().inlineKeyboard()[0][0].url());
+        replyKeyboardMarkup.addRow(girlAccountUrlKeyboardButton);
+        editMessageReplyMarkup.replyMarkup(replyKeyboardMarkup);
+        bot.execute(editMessageReplyMarkup);
+    }
+
+    private void incrementMessageReplyMarkup(final Update update) {
+        final EditMessageReplyMarkup editMessageReplyMarkup =
+                new EditMessageReplyMarkup(update.callbackQuery().message().chat().id(),
+                        update.callbackQuery().message().messageId());
+
+        final InlineKeyboardMarkup replyKeyboardMarkup =
+                getReplyInlineKeyboardMarkup(
+                        update.callbackQuery().message().replyMarkup().inlineKeyboard()[0][0].url());
+
+        editMessageReplyMarkup.replyMarkup(replyKeyboardMarkup);
+        bot.execute(editMessageReplyMarkup);
     }
 
     private void sendContentToChat(final TelegramPost telegramPost, final String instagramAccountURL) {
@@ -130,7 +160,7 @@ public class TelegramService {
 
     @NotNull
     private InlineKeyboardButton buildVoteKeyboardButton() {
-        final int newTelegramPostCounter = telegramVoteRepository.findByTelegramPost(telegramPostRepository.findTopByOrderByIdDesc()).size();
+        final int newTelegramPostCounter = telegramVoteRepository.findByTelegramPost(telegramPostRepository.findTopByOrderById()).size();
         final InlineKeyboardButton voteKeyboardButton = new InlineKeyboardButton(String.format("Send New Girl! (%s\\4)", newTelegramPostCounter));
         voteKeyboardButton.callbackData(UPDATE_MESSAGE);
         return voteKeyboardButton;
@@ -165,7 +195,7 @@ public class TelegramService {
 
 
     private boolean isEnoughVotes() {
-        final TelegramPost currentPost = telegramPostRepository.findTopByOrderByIdDesc();
+        final TelegramPost currentPost = telegramPostRepository.findTopByOrderById();
         List<TelegramVote> votes = telegramVoteRepository.findByTelegramPost(currentPost);
         return votes.size() > 3;
     }

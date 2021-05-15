@@ -1,8 +1,10 @@
 package com.instagirls.model.telegram;
 
 import lombok.Data;
+import org.hibernate.annotations.CreationTimestamp;
 
 import javax.persistence.*;
+import java.time.LocalDateTime;
 
 @Table
 @Entity
@@ -10,7 +12,7 @@ import javax.persistence.*;
 public class TelegramVote {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.AUTO)
+    @GeneratedValue(strategy = GenerationType.TABLE)
     private Long id;
 
     @Column(nullable = false)
@@ -18,4 +20,8 @@ public class TelegramVote {
 
     @OneToOne
     private TelegramPost telegramPost;
+
+    @CreationTimestamp
+    private LocalDateTime createdAt;
+
 }

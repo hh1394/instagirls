@@ -16,7 +16,7 @@ public class InstagramPost {
     public static final String DEFAULT_CAPTION = "(NO CAPTION)";
 
     @Id
-    @GeneratedValue(strategy = GenerationType.AUTO)
+    @GeneratedValue(strategy = GenerationType.TABLE)
     private Long id;
 
     @Column(nullable = false, unique = true)
