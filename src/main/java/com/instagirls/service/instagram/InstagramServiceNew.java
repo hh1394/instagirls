@@ -46,48 +46,11 @@ public class InstagramServiceNew {
     @Autowired
     private InstagramMediaRepository instagramMediaRepository;
 
-    public void test() {
-        long count = instagramAccountRepository.findById(1L).get().getInstagramPosts().stream().mapToLong(ip -> ip.getInstagramMedia().size()).sum();
-        LOGGER.info("COUNT: " + count);
-    }
-
-    @PostConstruct
-    public void loadPostsForAccounts() {
-        loadAllAccounts();
-        login();
-        LOGGER.info("Loading all posts..");
-        final List<InstagramAccount> allAccounts = (List<InstagramAccount>) instagramAccountRepository.findAll();
-        LOGGER.info("Accounts: " + allAccounts.size());
-        allAccounts.forEach(this::loadPostsForAccount);
-    }
-
-    private void loadAllAccounts() {
-        LOGGER.info("Loading all accounts..");
-
-        List<String> accounts = new ArrayList<>();
-        accounts.add("lanarhoades");
-        accounts.add("natalee.007");
-        accounts.add("oabramovich");
-        accounts.add("alexisren");
-        accounts.add("Gabbywestbrook");
-        accounts.add("mathildtantot");
-        accounts.add("cayleecowan");
-        accounts.add("sophiemudd");
-        accounts.add("demirose");
-//        accounts.add("daisykeech");
-//        accounts.add("rachelc00k");
-//        accounts.add("magui_ansuz");
-//        accounts.add("you___fit");
-//        accounts.add("elena.berlato");
-//        accounts.add("sophie_xdt");
-//        accounts.add("daria.plane");
-//        accounts.add("ale.valerya");
-
-        accounts.stream()
-                .map(InstagramAccount::new)
-                .forEach(instagramAccountRepository::save);
-        LOGGER.info("Done loading all accounts!");
-
+    public void loadNewAccount(final String username) {
+        LOGGER.info("Loading new account: " + username);
+        InstagramAccount instagramAccount = new InstagramAccount(username);
+        instagramAccount = instagramAccountRepository.save(instagramAccount);
+        loadPostsForAccount(instagramAccount);
     }
 
     @SneakyThrows
