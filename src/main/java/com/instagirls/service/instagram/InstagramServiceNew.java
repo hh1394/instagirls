@@ -15,6 +15,7 @@ import com.instagirls.repository.InstagramMediaRepository;
 import com.instagirls.repository.InstagramPostRepository;
 import com.instagirls.util.InstagramMediaExtractor;
 import lombok.SneakyThrows;
+import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -46,12 +47,40 @@ public class InstagramServiceNew {
     @Autowired
     private InstagramMediaRepository instagramMediaRepository;
 
+    @PostConstruct
+    private void login() {
+        if (igClient == null || !igClient.isLoggedIn()) {
+            LOGGER.info("IG Client not logged in!");
+            performLogin();
+        } else {
+            LOGGER.info("IG Client logged in!");
+        }
+    }
+
+    @NotNull
+    public InstagramPost getNewMostLikedPostFromRandomAccount() {
+        final InstagramAccount instagramAccount = getRandomAccount();
+        Optional<InstagramPost> instagramPost = instagramAccount.getInstagramPosts().stream()
+                .sorted(Comparator.comparingInt(InstagramPost::getLikes))
+                .filter(ip -> !ip.isPosted())
+                .findFirst();
+        if (instagramPost.isPresent()) {
+            InstagramPost post = instagramPost.get();
+            LOGGER.info("New most like post ID: " + post.getId());
+            return post;
+        } else {
+            disableAccount(instagramAccount);
+            return getNewMostLikedPostFromRandomAccount();
+        }
+    }
+
     public void loadNewAccount(final String username) {
         LOGGER.info("Loading new account: " + username);
         InstagramAccount instagramAccount = new InstagramAccount(username);
         instagramAccount = instagramAccountRepository.save(instagramAccount);
         loadPostsForAccount(instagramAccount);
     }
+
 
     @SneakyThrows
     // TODO load only new
@@ -114,26 +143,19 @@ public class InstagramServiceNew {
         return pk;
     }
 
-//    public TelegramPost generatePost() {
-//        login();
-//        final InstagramAccount girlUsername = getRandomAccount();
-//        return getNewMostLikedPostMediaUrls(girlUsername);
-//    }
+    private void disableAccount(final InstagramAccount instagramAccount) {
+        LOGGER.info("No posts for " + instagramAccount.getUsername());
+        LOGGER.info("Switching off!");
+        instagramAccount.setActive(false);
+        instagramAccountRepository.save(instagramAccount);
+    }
 
     private InstagramAccount getRandomAccount() {
         final List<InstagramAccount> allAccounts = (List<InstagramAccount>) instagramAccountRepository.findAll();
-        return allAccounts.stream().findAny()
+        InstagramAccount instagramAccount = allAccounts.stream().filter(InstagramAccount::isActive).findAny()
                 .orElseThrow(() -> new IllegalStateException("No instagram accounts in DB!"));
-//        return instagramPostRepository.findTopByInstagramAccountAndPostedFalseOrderByLikesDesc(instagramAccount);
-    }
-
-    private void login() {
-        if (igClient == null || !igClient.isLoggedIn()) {
-            LOGGER.info("IG Client not logged in!");
-            performLogin();
-        } else {
-            LOGGER.info("IG Client logged in!");
-        }
+        LOGGER.info("Random instagram account: " + instagramAccount.getUsername());
+        return instagramAccount;
     }
 
     private void performLogin() {
