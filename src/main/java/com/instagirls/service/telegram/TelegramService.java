@@ -56,7 +56,6 @@ public class TelegramService {
         } else {
             LOGGER.info("Bot already initialized.");
         }
-        sendNewPostToTelegram();
     }
 
     @Scheduled(cron = "@daily")
@@ -77,6 +76,7 @@ public class TelegramService {
     }
 
     private void processUpdate(final Update update) {
+        LOGGER.info(update.toString());
         if (updateContainsValidVote(update)) {
             final TelegramVote telegramVote = PostMapper.mapToTelegramVote(update);
             telegramVote.setTelegramPost(telegramPostRepository.findTopByOrderByIdDesc());
@@ -91,7 +91,7 @@ public class TelegramService {
         if (isEnoughVotes()) {
             removeVoteFromMessageReplyMarkup(update);
             sendNewPostToTelegram();
-        }else{
+        } else {
             incrementMessageReplyMarkup(update);
         }
     }
@@ -208,7 +208,7 @@ public class TelegramService {
         final boolean isUpdateGirl = update.callbackQuery().data().equals(UPDATE_MESSAGE);
         final boolean isNewUserVote =
                 telegramVoteRepository.findByTelegramUserIdAndTelegramPost(update.callbackQuery().from().id(),
-                        telegramPostRepository.findTopByOrderById()) == null;
+                        telegramPostRepository.findTopByOrderByIdDesc()) == null;
         return isUpdateGirl && isNewUserVote;
     }
 

@@ -45,6 +45,7 @@ public class InstagramService {
     @Autowired
     private InstagramMediaRepository instagramMediaRepository;
 
+
     private void login() {
         if (igClient == null || !igClient.isLoggedIn()) {
             LOGGER.info("IG Client not logged in!");
@@ -78,13 +79,13 @@ public class InstagramService {
         LOGGER.info("Loading new account: " + username);
         InstagramAccount instagramAccount = new InstagramAccount(username);
         instagramAccount = instagramAccountRepository.save(instagramAccount);
-        loadPostsForAccount(instagramAccount);
+        loadAllPostsForAccount(instagramAccount);
     }
 
 
     @SneakyThrows
     // TODO load only new
-    private void loadPostsForAccount(final InstagramAccount instagramAccount) {
+    private void loadAllPostsForAccount(final InstagramAccount instagramAccount) {
         final Set<TimelineMedia> items = new HashSet<>();
         FeedUserResponse feedUserResponse;
 
