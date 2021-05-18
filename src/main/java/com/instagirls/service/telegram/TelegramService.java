@@ -1,15 +1,24 @@
 package com.instagirls.service.telegram;
 
+import com.fasterxml.jackson.annotation.JsonAutoDetect;
+import com.fasterxml.jackson.annotation.PropertyAccessor;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.instagirls.dto.InstagramPostDTO;
+import com.instagirls.exception.EmptyTelegramMessageException;
 import com.instagirls.model.instagram.InstagramMedia;
 import com.instagirls.model.telegram.TelegramPost;
+import com.instagirls.model.telegram.TelegramUser;
 import com.instagirls.model.telegram.TelegramVote;
+import com.instagirls.repository.TelegramMessageRepository;
 import com.instagirls.repository.TelegramPostRepository;
+import com.instagirls.repository.TelegramUserRepository;
 import com.instagirls.repository.TelegramVoteRepository;
 import com.instagirls.service.instagram.InstagramService;
 import com.instagirls.util.PostMapper;
 import com.pengrad.telegrambot.TelegramBot;
+import com.pengrad.telegrambot.model.Chat;
 import com.pengrad.telegrambot.model.Update;
+import com.pengrad.telegrambot.model.User;
 import com.pengrad.telegrambot.model.request.InlineKeyboardButton;
 import com.pengrad.telegrambot.model.request.InlineKeyboardMarkup;
 import com.pengrad.telegrambot.model.request.InputMedia;
@@ -18,6 +27,7 @@ import com.pengrad.telegrambot.request.EditMessageReplyMarkup;
 import com.pengrad.telegrambot.request.SendMediaGroup;
 import com.pengrad.telegrambot.request.SendMessage;
 import com.pengrad.telegrambot.response.SendResponse;
+import lombok.SneakyThrows;
 import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -33,20 +43,46 @@ import java.util.List;
 public class TelegramService {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(TelegramService.class);
+    private static final String COMMAND_START = "/start";
+    private static final String COMMAND_ADD_GIRL = "/addgirl";
     private static final String UPDATE_MESSAGE = "send_new_girl";
     private static final String CHAT_ID = System.getenv("chat_id");
+    private final ObjectMapper mapper = new ObjectMapper();
+    private final List<String> supportedCommands = new ArrayList<>();
     private TelegramBot bot;
-
     @Autowired
     private TelegramVoteRepository telegramVoteRepository;
-
     @Autowired
     private TelegramPostRepository telegramPostRepository;
-
+    @Autowired
+    private TelegramMessageRepository telegramMessageRepository;
+    @Autowired
+    private TelegramUserRepository telegramUserRepository;
     @Autowired
     private InstagramService instagramService;
 
+    private static String extractAccountFromURL(final String url) {
+        final String domain = "instagram.com/";
+        int beginIndex = url.indexOf(domain) + domain.length();
+        String substring = url.substring(beginIndex);
+        if (substring.contains("/")) {
+            int endIndex = substring.indexOf("/") + beginIndex;
+            return url.substring(beginIndex, endIndex);
+        } else {
+            return url.substring(beginIndex);
+        }
+    }
+
     @PostConstruct
+    private void initService() {
+        mapper.setVisibility(PropertyAccessor.FIELD, JsonAutoDetect.Visibility.ANY);
+
+        supportedCommands.add(COMMAND_START);
+        supportedCommands.add(COMMAND_ADD_GIRL);
+
+        initBot();
+    }
+
     private void initBot() {
         LOGGER.info("Initializing bot..");
         if (bot == null) {
@@ -75,16 +111,111 @@ public class TelegramService {
         return updates.get(updates.size() - 1).updateId();
     }
 
+    @SneakyThrows
     private void processUpdate(final Update update) {
-        LOGGER.info(update.toString());
+        LOGGER.info(mapper.writerWithDefaultPrettyPrinter().writeValueAsString(update));
+        addUserIfNeeded(update.message().from());
         if (updateContainsValidVote(update)) {
             final TelegramVote telegramVote = PostMapper.mapToTelegramVote(update);
             telegramVote.setTelegramPost(telegramPostRepository.findTopByOrderByIdDesc());
             telegramVoteRepository.save(telegramVote);
-            LOGGER.info("Got request for a new girl!");
+            LOGGER.info("Got request for a new girl post!");
             LOGGER.info("User: " + update.callbackQuery().from());
             checkVote(update);
+        } else if (updateContainsValidCommand(update)) {
+            final String command = update.message().text();
+            switch (command) {
+                case COMMAND_START:
+                    processStartCommand(update);
+                    break;
+                case COMMAND_ADD_GIRL:
+                    processAddGirlCommand(update);
+                    break;
+                default:
+                    processMessageFromUser(update);
+                    break;
+            }
         }
+    }
+
+    private void addUserIfNeeded(final User user) {
+        if (!telegramUserRepository.existsById(user.id().longValue())) {
+            LOGGER.info("Adding new user!");
+            LOGGER.info(user.toString());
+
+            final TelegramUser telegramUser = mapToTelegramUser(user);
+            telegramUserRepository.save(telegramUser);
+        }
+    }
+
+    private TelegramUser mapToTelegramUser(final User user) {
+        final TelegramUser telegramUser = new TelegramUser();
+        telegramUser.setTelegramId(user.id());
+        telegramUser.setUsername(user.username());
+        telegramUser.setFirstName(user.firstName());
+        telegramUser.setLastName(user.lastName());
+        return telegramUser;
+    }
+
+    private void processMessageFromUser(final Update update) {
+        if (update.message().chat() != null) {
+            final Chat.Type type = update.message().chat().type();
+            if (type == Chat.Type.Private) {
+                processPrivateMessage(update);
+            } else {
+                LOGGER.info("Unsupported chat type: " + type);
+            }
+        }
+    }
+
+    private void processPrivateMessage(final Update update) {
+        final String previousUserMessage = getLastUserMessage(update.message().from().id());
+        if (COMMAND_ADD_GIRL.equals(previousUserMessage)) {
+            final String accountUsername = extractInstagramAccount(update.message().text());
+            instagramService.loadNewAccount(accountUsername);
+            sendMessage(update.message().chat().id().toString(), String.format("Loaded %s for you, darling!", accountUsername));
+        } else {
+            sendMessage(update.message().chat().id().toString(), "No such command, baby!");
+        }
+    }
+
+    private String extractInstagramAccount(final String text) {
+        if (text != null) {
+            if (text.contains("/")) {
+                return extractAccountFromURL(text);
+            }
+            return sanitizeAccount(text);
+        }
+        throw new EmptyTelegramMessageException();
+    }
+
+    private String sanitizeAccount(final String text) {
+        return text.replace("/", "");
+    }
+
+    private String getLastUserMessage(final Integer telegramUserId) {
+        final TelegramUser telegramUser = telegramUserRepository.findByTelegramId(telegramUserId);
+        return telegramMessageRepository.findTopTelegramMessageByTelegramUserOrderByIdDesc(telegramUser).getText();
+    }
+
+    private void processStartCommand(final Update update) {
+        sendMessage(update.message().from().id().toString(),
+                "You can add a girl by sending /addgirl command.");
+    }
+
+    private void processAddGirlCommand(final Update update) {
+        LOGGER.info("Got request for a new girl account!");
+        sendMessage(update.message().from().id().toString(),
+                "Send me girl account you want to add, honey..");
+    }
+
+    private boolean updateContainsValidCommand(final Update update) {
+        if (update.message() != null && update.message().text() != null) {
+            final String command = update.message().text();
+            LOGGER.info("Got command: " + command);
+            return true;
+        }
+        return false;
     }
 
     private void checkVote(final Update update) {
@@ -128,7 +259,7 @@ public class TelegramService {
     }
 
     private void sendCaptionWithReplyKeyboardMarkup(final TelegramPost telegramPost, final String instagramAccountURL) {
-        final SendResponse response = sendCaption(telegramPost);
+        final SendResponse response = sendMessage(CHAT_ID, telegramPost.getInstagramPost().getCaption());
         addReplyKeyboardMarkup(response, instagramAccountURL);
     }
 
@@ -174,8 +305,8 @@ public class TelegramService {
         return girlAccountUrlKeyboardButton;
     }
 
-    private SendResponse sendCaption(final TelegramPost telegramPost) {
-        final SendMessage sendMessage = new SendMessage(CHAT_ID, telegramPost.getInstagramPost().getCaption());
+    private SendResponse sendMessage(final String chatId, final String message) {
+        final SendMessage sendMessage = new SendMessage(chatId, message);
         return bot.execute(sendMessage);
     }
 

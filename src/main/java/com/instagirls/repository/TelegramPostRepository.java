@@ -7,8 +7,6 @@ import org.springframework.stereotype.Repository;
 @Repository
 public interface TelegramPostRepository extends CrudRepository<TelegramPost, Long> {
 
-    TelegramPost findTopByOrderById();
-
     TelegramPost findTopByOrderByIdDesc();
 
 }
