@@ -172,8 +172,12 @@ public class TelegramService {
         final String previousUserMessage = getLastUserMessage(update.message().from().id());
         if (COMMAND_ADD_GIRL.equals(previousUserMessage)) {
             final String accountUsername = extractInstagramAccount(update.message().text());
-            instagramService.loadNewAccount(accountUsername);
-            sendMessage(update.message().chat().id().toString(), String.format("Loaded %s for you, darling!", accountUsername));
+            if(instagramService.accountExists(accountUsername)){
+                instagramService.loadNewAccount(accountUsername);
+                sendMessage(update.message().chat().id().toString(), String.format("Loaded %s for you, darling!", accountUsername));
+            }else{
+                sendMessage(update.message().chat().id().toString(), String.format("%s doesn't exists or is private! Honey, provide an actual and public account..", accountUsername));
+            }
         } else {
             sendMessage(update.message().chat().id().toString(), "No such command, baby!");
         }

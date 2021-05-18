@@ -2,12 +2,16 @@ package com.instagirls.service.instagram;
 
 import com.github.instagram4j.instagram4j.IGClient;
 import com.github.instagram4j.instagram4j.exceptions.IGLoginException;
+import com.github.instagram4j.instagram4j.exceptions.IGResponseException;
 import com.github.instagram4j.instagram4j.models.media.timeline.TimelineMedia;
 import com.github.instagram4j.instagram4j.requests.feed.FeedUserRequest;
+import com.github.instagram4j.instagram4j.requests.users.UsersUsernameInfoRequest;
 import com.github.instagram4j.instagram4j.responses.feed.FeedUserResponse;
+import com.github.instagram4j.instagram4j.responses.users.UserResponse;
 import com.instagirls.dto.InstagramPostDTO;
 import com.instagirls.exception.LoginFailedException;
 import com.instagirls.exception.SleepFailedException;
+import com.instagirls.exception.UnexpectedInstagramException;
 import com.instagirls.model.instagram.InstagramAccount;
 import com.instagirls.model.instagram.InstagramMedia;
 import com.instagirls.model.instagram.InstagramPost;
@@ -22,6 +26,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
+import javax.annotation.PostConstruct;
 import java.util.*;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
@@ -45,7 +50,7 @@ public class InstagramService {
     @Autowired
     private InstagramMediaRepository instagramMediaRepository;
 
-
+    @PostConstruct
     private void login() {
         if (igClient == null || !igClient.isLoggedIn()) {
             LOGGER.info("IG Client not logged in!");
@@ -73,6 +78,23 @@ public class InstagramService {
             disableAccount(instagramAccount);
             return getNewMostLikedPostFromRandomAccount();
         }
+    }
+
+    public boolean accountExists(final String username) {
+        boolean result = false;
+        try {
+            final UsersUsernameInfoRequest usersUsernameInfoRequest = new UsersUsernameInfoRequest(username);
+            final UserResponse userResponse = igClient.sendRequest(usersUsernameInfoRequest).get();
+            result = userResponse.getUser() != null && !userResponse.getUser().is_private();
+        } catch (final ExecutionException exception) {
+            if (exception.getCause() instanceof IGResponseException &&
+                    "User not found".equals(((IGResponseException) exception.getCause()).getResponse().getMessage())) {
+            }
+        } catch (final InterruptedException e) {
+            throw new UnexpectedInstagramException(e);
+        }
+        return result;
+
     }
 
     public void loadNewAccount(final String username) {
