@@ -174,8 +174,11 @@ public class TelegramService {
     }
 
     private void processPrivateMessage(final Update update) {
-        final TelegramMessage previousUserMessage = getLastUserMessage(update.message().from().id());
-        if (COMMAND_ADD_GIRL.equals(previousUserMessage.getText())) {
+        final TelegramMessage previousUserCommandMessage = getLastUserMessage(update.message().from().id());
+        if (previousUserCommandMessage == null) {
+            return;
+        }
+        if (COMMAND_ADD_GIRL.equals(previousUserCommandMessage.getText())) {
             final String accountUsername = extractInstagramAccount(update.message().text());
             if (instagramService.accountExists(accountUsername)) {
                 instagramService.loadNewAccount(accountUsername);
@@ -186,7 +189,7 @@ public class TelegramService {
         } else {
             sendMessage(update.message().chat().id().toString(), "Won't do, baby!");
         }
-        telegramMessageRepository.delete(previousUserMessage);
+        telegramMessageRepository.delete(previousUserCommandMessage);
     }
 
     private String extractInstagramAccount(final String text) {
