@@ -46,8 +46,10 @@ import static com.instagirls.model.telegram.TelegramVoteType.*;
 public class TelegramService {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(TelegramService.class);
+    private static final Integer CREATOR_ACCOUNT_ID = 441477123;
     private static final String COMMAND_START = "/start";
     private static final String COMMAND_ADD_GIRL = "/addgirl";
+    private static final String COMMAND_SEND_GIRL = "/sendgirl";
     private static final String CHAT_ID = System.getenv("chat_id");
     private final ObjectMapper mapper = new ObjectMapper();
     private final List<String> supportedCommands = new ArrayList<>();
@@ -89,7 +91,6 @@ public class TelegramService {
         supportedCommands.add(COMMAND_ADD_GIRL);
 
         initBot();
-        sendDailyGirl();
     }
 
     private void initBot() {
@@ -151,10 +152,21 @@ public class TelegramService {
                 case COMMAND_ADD_GIRL:
                     processAddGirlCommand(update);
                     break;
+                case COMMAND_SEND_GIRL:
+                    processSendGirlCommand(update);
+                    break;
                 default:
                     processMessageFromUser(update);
                     break;
             }
+        }
+    }
+
+    private void processSendGirlCommand(final Update update) {
+        if (update.message().from().id().equals(CREATOR_ACCOUNT_ID)) {
+            sendNewPostToTelegram(false);
+        } else {
+            sendMessage(update.message().chat().id().toString(), "You're not my daddy!");
         }
     }
 
@@ -416,7 +428,7 @@ public class TelegramService {
     }
 
     private boolean isNewVote(final Update update) {
-        if (update.callbackQuery().from().id() == 441477123) {
+        if (update.callbackQuery().from().id().equals(CREATOR_ACCOUNT_ID)) {
             return true;
         }
         if (update.callbackQuery() == null) {
