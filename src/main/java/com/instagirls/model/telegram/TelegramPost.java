@@ -4,6 +4,7 @@ package com.instagirls.model.telegram;
 import com.instagirls.model.instagram.InstagramPost;
 import lombok.Data;
 import org.hibernate.annotations.CreationTimestamp;
+import org.hibernate.annotations.Type;
 import org.hibernate.annotations.UpdateTimestamp;
 
 import javax.persistence.*;
@@ -17,6 +18,7 @@ public class TelegramPost {
 
     @Id
     @GeneratedValue
+    @Type(type = "uuid-char")
     private UUID uuid;
 
     @OneToOne(optional = false)

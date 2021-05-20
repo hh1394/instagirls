@@ -2,6 +2,7 @@ package com.instagirls.model.telegram;
 
 import com.pengrad.telegrambot.model.Chat;
 import lombok.Data;
+import org.hibernate.annotations.Type;
 
 import javax.persistence.*;
 import java.util.UUID;
@@ -13,6 +14,7 @@ public class TelegramChat {
 
     @Id
     @GeneratedValue
+    @Type(type = "uuid-char")
     private UUID uuid;
 
     @Column(nullable = false)

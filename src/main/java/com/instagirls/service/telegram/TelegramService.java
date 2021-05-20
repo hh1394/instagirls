@@ -205,8 +205,7 @@ public class TelegramService {
 
     private TelegramMessage getLastUserMessage(final Integer telegramUserId) {
         final TelegramUser telegramUser = telegramUserRepository.findByTelegramId(telegramUserId);
-        final TelegramMessage message = telegramMessageRepository.findTopTelegramMessageByTelegramUser(telegramUser);
-        return message;
+        return telegramMessageRepository.findTopTelegramMessageByTelegramUser(telegramUser);
     }
 
     private void processStartCommand(final Update update) {
