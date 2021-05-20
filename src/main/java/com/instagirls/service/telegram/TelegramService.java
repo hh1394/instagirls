@@ -122,7 +122,7 @@ public class TelegramService {
         addUserIfNeeded(update.message().from());
         if (updateContainsValidVote(update)) {
             final TelegramVote telegramVote = PostMapper.mapToTelegramVote(update);
-            telegramVote.setTelegramPost(telegramPostRepository.findTopByOrderByIdDesc());
+            telegramVote.setTelegramPost(telegramPostRepository.findTopByOrderByCreatedAtDesc());
             telegramVoteRepository.save(telegramVote);
             LOGGER.info("Got request for a new girl post!");
             LOGGER.info("User: " + update.callbackQuery().from());
@@ -205,7 +205,7 @@ public class TelegramService {
 
     private TelegramMessage getLastUserMessage(final Integer telegramUserId) {
         final TelegramUser telegramUser = telegramUserRepository.findByTelegramId(telegramUserId);
-        final TelegramMessage message = telegramMessageRepository.findTopTelegramMessageByTelegramUserOrderByIdDesc(telegramUser);
+        final TelegramMessage message = telegramMessageRepository.findTopTelegramMessageByTelegramUser(telegramUser);
         return message;
     }
 
@@ -306,7 +306,7 @@ public class TelegramService {
 
     @NotNull
     private InlineKeyboardButton buildVoteKeyboardButton() {
-        final int newTelegramPostCounter = telegramVoteRepository.findByTelegramPost(telegramPostRepository.findTopByOrderByIdDesc()).size();
+        final int newTelegramPostCounter = telegramVoteRepository.findByTelegramPost(telegramPostRepository.findTopByOrderByCreatedAtDesc()).size();
         final InlineKeyboardButton voteKeyboardButton = new InlineKeyboardButton(String.format("Send New Girl! (%s\\4)", newTelegramPostCounter));
         voteKeyboardButton.callbackData(UPDATE_MESSAGE);
         return voteKeyboardButton;
@@ -341,7 +341,7 @@ public class TelegramService {
 
 
     private boolean isEnoughVotes() {
-        final TelegramPost currentPost = telegramPostRepository.findTopByOrderByIdDesc();
+        final TelegramPost currentPost = telegramPostRepository.findTopByOrderByCreatedAtDesc();
         List<TelegramVote> votes = telegramVoteRepository.findByTelegramPost(currentPost);
         return votes.size() > 3;
     }
@@ -353,7 +353,7 @@ public class TelegramService {
         final boolean isUpdateGirl = update.callbackQuery().data().equals(UPDATE_MESSAGE);
         final boolean isNewUserVote =
                 telegramVoteRepository.findByTelegramUserIdAndTelegramPost(update.callbackQuery().from().id(),
-                        telegramPostRepository.findTopByOrderByIdDesc()) == null;
+                        telegramPostRepository.findTopByOrderByCreatedAtDesc()) == null;
         return isUpdateGirl && isNewUserVote;
     }
 

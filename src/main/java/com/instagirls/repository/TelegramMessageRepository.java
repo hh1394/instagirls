@@ -10,6 +10,6 @@ import java.util.UUID;
 @Repository
 public interface TelegramMessageRepository extends CrudRepository<TelegramMessage, UUID> {
 
-    TelegramMessage findTopTelegramMessageByTelegramUserOrderByIdDesc(final TelegramUser telegramUser);
+    TelegramMessage findTopTelegramMessageByTelegramUser(final TelegramUser telegramUser);
 
 }
