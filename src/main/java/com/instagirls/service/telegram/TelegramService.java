@@ -14,6 +14,7 @@ import com.instagirls.repository.TelegramMessageRepository;
 import com.instagirls.repository.TelegramPostRepository;
 import com.instagirls.repository.TelegramUserRepository;
 import com.instagirls.repository.TelegramVoteRepository;
+import com.instagirls.service.CaptionService;
 import com.instagirls.service.instagram.InstagramService;
 import com.instagirls.util.PostMapper;
 import com.pengrad.telegrambot.TelegramBot;
@@ -61,6 +62,8 @@ public class TelegramService {
     private TelegramUserRepository telegramUserRepository;
     @Autowired
     private InstagramService instagramService;
+    @Autowired
+    private CaptionService captionService;
 
     private static String extractAccountFromURL(final String url) {
         final String domain = "instagram.com/";
@@ -271,11 +274,11 @@ public class TelegramService {
 
     private void sendContentToChat(final TelegramPost telegramPost, final String instagramAccountURL) {
         sendMedia(telegramPost);
-        sendCaptionWithReplyKeyboardMarkup(telegramPost, instagramAccountURL);
+        sendCaptionWithReplyKeyboardMarkup(instagramAccountURL);
     }
 
-    private void sendCaptionWithReplyKeyboardMarkup(final TelegramPost telegramPost, final String instagramAccountURL) {
-        final SendResponse response = sendMessage(CHAT_ID, telegramPost.getInstagramPost().getCaption());
+    private void sendCaptionWithReplyKeyboardMarkup(final String instagramAccountURL) {
+        final SendResponse response = sendMessage(CHAT_ID, captionService.getCaption());
         addReplyKeyboardMarkup(response, instagramAccountURL);
     }
 
