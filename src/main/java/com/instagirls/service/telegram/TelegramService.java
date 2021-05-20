@@ -6,6 +6,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.instagirls.dto.InstagramPostDTO;
 import com.instagirls.exception.EmptyTelegramMessageException;
 import com.instagirls.model.instagram.InstagramMedia;
+import com.instagirls.model.telegram.TelegramMessage;
 import com.instagirls.model.telegram.TelegramPost;
 import com.instagirls.model.telegram.TelegramUser;
 import com.instagirls.model.telegram.TelegramVote;
@@ -68,10 +69,14 @@ public class TelegramService {
         if (substring.contains("/")) {
             int endIndex = substring.indexOf("/") + beginIndex;
             return url.substring(beginIndex, endIndex);
+        } else if (substring.contains("?")) {
+            int endIndex = substring.indexOf("?") + beginIndex;
+            return url.substring(beginIndex, endIndex);
         } else {
             return url.substring(beginIndex);
         }
     }
+
 
     @PostConstruct
     private void initService() {
@@ -139,7 +144,7 @@ public class TelegramService {
     }
 
     private void addUserIfNeeded(final User user) {
-        if (!telegramUserRepository.existsById(user.id().longValue())) {
+        if (telegramUserRepository.findByTelegramId(user.id()) == null) {
             LOGGER.info("Adding new user!");
             LOGGER.info(user.toString());
 
@@ -169,17 +174,18 @@ public class TelegramService {
     }
 
     private void processPrivateMessage(final Update update) {
-        final String previousUserMessage = getLastUserMessage(update.message().from().id());
-        if (COMMAND_ADD_GIRL.equals(previousUserMessage)) {
+        final TelegramMessage previousUserMessage = getLastUserMessage(update.message().from().id());
+        if (COMMAND_ADD_GIRL.equals(previousUserMessage.getText())) {
             final String accountUsername = extractInstagramAccount(update.message().text());
-            if(instagramService.accountExists(accountUsername)){
+            if (instagramService.accountExists(accountUsername)) {
                 instagramService.loadNewAccount(accountUsername);
                 sendMessage(update.message().chat().id().toString(), String.format("Loaded %s for you, darling!", accountUsername));
-            }else{
+                telegramMessageRepository.delete(previousUserMessage);
+            } else {
                 sendMessage(update.message().chat().id().toString(), String.format("%s doesn't exists or is private! Honey, provide an actual and public account..", accountUsername));
             }
         } else {
-            sendMessage(update.message().chat().id().toString(), "No such command, baby!");
+            sendMessage(update.message().chat().id().toString(), "Won't do, baby!");
         }
     }
 
@@ -197,9 +203,10 @@ public class TelegramService {
         return text.replace("/", "");
     }
 
-    private String getLastUserMessage(final Integer telegramUserId) {
+    private TelegramMessage getLastUserMessage(final Integer telegramUserId) {
         final TelegramUser telegramUser = telegramUserRepository.findByTelegramId(telegramUserId);
-        return telegramMessageRepository.findTopTelegramMessageByTelegramUserOrderByIdDesc(telegramUser).getText();
+        final TelegramMessage message = telegramMessageRepository.findTopTelegramMessageByTelegramUserOrderByIdDesc(telegramUser);
+        return message;
     }
 
     private void processStartCommand(final Update update) {
@@ -209,7 +216,10 @@ public class TelegramService {
 
     private void processAddGirlCommand(final Update update) {
         LOGGER.info("Got request for a new girl account!");
-        sendMessage(update.message().from().id().toString(),
+        final Integer telegramUserId = update.message().from().id();
+        final TelegramUser telegramUser = telegramUserRepository.findByTelegramId(telegramUserId);
+        telegramMessageRepository.save(new TelegramMessage(update.message().messageId(), telegramUser, update.message().text()));
+        sendMessage(telegramUserId.toString(),
                 "Send me girl account you want to add, honey..");
     }
 

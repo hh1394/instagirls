@@ -3,6 +3,7 @@ package com.instagirls.model.telegram;
 import lombok.Data;
 
 import javax.persistence.*;
+import java.util.UUID;
 
 @Entity
 @Table
@@ -10,10 +11,10 @@ import javax.persistence.*;
 public class TelegramUser {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.TABLE)
-    private Long id;
+    @GeneratedValue
+    private UUID id;
 
-    @Column(nullable = false)
+    @Column(nullable = false, unique = true)
     private Integer telegramId;
 
     @Column

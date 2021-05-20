@@ -5,6 +5,7 @@ import org.hibernate.annotations.CreationTimestamp;
 
 import javax.persistence.*;
 import java.time.LocalDateTime;
+import java.util.UUID;
 
 @Table
 @Entity
@@ -12,8 +13,8 @@ import java.time.LocalDateTime;
 public class TelegramVote {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.TABLE)
-    private Long id;
+    @GeneratedValue
+    private UUID id;
 
     @Column(nullable = false)
     private Integer telegramUserId;

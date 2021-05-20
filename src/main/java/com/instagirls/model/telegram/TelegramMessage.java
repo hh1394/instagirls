@@ -3,6 +3,7 @@ package com.instagirls.model.telegram;
 import lombok.Data;
 
 import javax.persistence.*;
+import java.util.UUID;
 
 @Table
 @Entity
@@ -10,8 +11,8 @@ import javax.persistence.*;
 public class TelegramMessage {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.TABLE)
-    private Long id;
+    @GeneratedValue
+    private UUID id;
 
     @Column(nullable = false)
     private Integer telegramMessageId;
@@ -19,10 +20,15 @@ public class TelegramMessage {
     @ManyToOne(optional = false)
     private TelegramUser telegramUser;
 
-    @ManyToOne(optional = false)
-    private TelegramChat telegramChat;
-
     @Column(nullable = false)
     private String text;
 
+    public TelegramMessage() {
+    }
+
+    public TelegramMessage(final Integer telegramMessageId, final TelegramUser telegramUser, final String text) {
+        this.telegramMessageId = telegramMessageId;
+        this.telegramUser = telegramUser;
+        this.text = text;
+    }
 }

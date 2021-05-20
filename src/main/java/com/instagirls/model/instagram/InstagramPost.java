@@ -7,6 +7,7 @@ import org.hibernate.annotations.UpdateTimestamp;
 import javax.persistence.*;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.UUID;
 
 @Entity
 @Table
@@ -16,8 +17,8 @@ public class InstagramPost {
     public static final String DEFAULT_CAPTION = "(NO CAPTION)";
 
     @Id
-    @GeneratedValue(strategy = GenerationType.TABLE)
-    private Long id;
+    @GeneratedValue
+    private UUID id;
 
     @Column(nullable = false, unique = true)
     private String instagramPostId;

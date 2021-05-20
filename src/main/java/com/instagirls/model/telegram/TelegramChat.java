@@ -1,8 +1,10 @@
 package com.instagirls.model.telegram;
 
+import com.pengrad.telegrambot.model.Chat;
 import lombok.Data;
 
 import javax.persistence.*;
+import java.util.UUID;
 
 @Entity
 @Table
@@ -10,14 +12,14 @@ import javax.persistence.*;
 public class TelegramChat {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.TABLE)
-    private Long id;
+    @GeneratedValue
+    private UUID id;
 
     @Column(nullable = false)
     private Integer telegramChatId;
 
     @Column(nullable = false)
-    private TelegramChatType telegramChatType;
+    private Chat.Type telegramChatType;
 
     @Column
     private String title;

@@ -8,6 +8,7 @@ import org.hibernate.annotations.UpdateTimestamp;
 
 import javax.persistence.*;
 import java.time.LocalDateTime;
+import java.util.UUID;
 
 @Entity
 @Table
@@ -15,8 +16,8 @@ import java.time.LocalDateTime;
 public class TelegramPost {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.TABLE)
-    private Long id;
+    @GeneratedValue
+    private UUID id;
 
     @OneToOne(optional = false)
     private InstagramPost instagramPost;

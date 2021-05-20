@@ -58,6 +58,7 @@ public class InstagramService {
         } else {
             LOGGER.info("IG Client logged in!");
         }
+        instagramAccountRepository.deleteById(3L);
     }
 
     @NotNull
