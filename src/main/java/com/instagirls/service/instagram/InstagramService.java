@@ -59,9 +59,18 @@ public class InstagramService {
         }
     }
 
+    public InstagramPostDTO getNewMostLikedPostFromAccount(final InstagramPost instagramPost) {
+        final InstagramAccount instagramAccount = instagramAccountRepository.findByInstagramPostsContaining(instagramPost);
+        return getInstagramPostDTO(instagramAccount);
+    }
+
     @NotNull
     public InstagramPostDTO getNewMostLikedPostFromRandomAccount() {
         final InstagramAccount instagramAccount = getRandomAccount();
+        return getInstagramPostDTO(instagramAccount);
+    }
+
+    private InstagramPostDTO getInstagramPostDTO(final InstagramAccount instagramAccount) {
         final Optional<InstagramPost> instagramPost = instagramAccount.getInstagramPosts().stream()
                 .sorted((ip1, ip2) -> Long.compare(ip2.getLikes(), ip1.getLikes()))
                 .filter(ip -> !ip.isPosted())
@@ -221,4 +230,14 @@ public class InstagramService {
         instagramPost.setPosted(true);
         instagramPostRepository.save(instagramPost);
     }
+
+    public String banAccountByPost(final InstagramPost instagramPost) {
+        final InstagramAccount instagramAccount = instagramAccountRepository.findByInstagramPostsContaining(instagramPost);
+        instagramAccount.setActive(false);
+        instagramAccountRepository.save(instagramAccount);
+        LOGGER.info("Banned " + instagramAccount.getUsername());
+        return instagramAccount.getUsername();
+    }
+
+
 }

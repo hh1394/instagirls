@@ -6,10 +6,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.instagirls.dto.InstagramPostDTO;
 import com.instagirls.exception.EmptyTelegramMessageException;
 import com.instagirls.model.instagram.InstagramMedia;
-import com.instagirls.model.telegram.TelegramMessage;
-import com.instagirls.model.telegram.TelegramPost;
-import com.instagirls.model.telegram.TelegramUser;
-import com.instagirls.model.telegram.TelegramVote;
+import com.instagirls.model.telegram.*;
 import com.instagirls.repository.TelegramMessageRepository;
 import com.instagirls.repository.TelegramPostRepository;
 import com.instagirls.repository.TelegramUserRepository;
@@ -39,7 +36,10 @@ import org.springframework.stereotype.Service;
 
 import javax.annotation.PostConstruct;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
+
+import static com.instagirls.model.telegram.TelegramVoteType.*;
 
 @Service
 public class TelegramService {
@@ -47,7 +47,6 @@ public class TelegramService {
     private static final Logger LOGGER = LoggerFactory.getLogger(TelegramService.class);
     private static final String COMMAND_START = "/start";
     private static final String COMMAND_ADD_GIRL = "/addgirl";
-    private static final String UPDATE_MESSAGE = "send_new_girl";
     private static final String CHAT_ID = System.getenv("chat_id");
     private final ObjectMapper mapper = new ObjectMapper();
     private final List<String> supportedCommands = new ArrayList<>();
@@ -103,9 +102,18 @@ public class TelegramService {
     }
 
     @Scheduled(cron = "0 0 8 * * ?")
-    public void sendNewPostToTelegram() {
+    public void sendDailyGirl() {
+        sendNewPostToTelegram(false);
+    }
+
+    private void sendNewPostToTelegram(final boolean sameGirl) {
         telegramVoteRepository.deleteAll();
-        final InstagramPostDTO instagramPostDTO = instagramService.getNewMostLikedPostFromRandomAccount();
+        final InstagramPostDTO instagramPostDTO;
+        if (sameGirl) {
+            instagramPostDTO = instagramService.getNewMostLikedPostFromAccount(getCurrentPost().getInstagramPost());
+        } else {
+            instagramPostDTO = instagramService.getNewMostLikedPostFromRandomAccount();
+        }
         TelegramPost telegramPost = new TelegramPost(instagramPostDTO.getInstagramPost());
         telegramPost = telegramPostRepository.save(telegramPost);
         sendContentToChat(telegramPost, instagramPostDTO.getInstagramAccountURL());
@@ -123,11 +131,11 @@ public class TelegramService {
     private void processUpdate(final Update update) {
         LOGGER.info(mapper.writerWithDefaultPrettyPrinter().writeValueAsString(update));
         addUserIfNeeded(update.message().from());
-        if (updateContainsValidVote(update)) {
+        if (update.callbackQuery().data() != null && isNewVote(update)) {
             final TelegramVote telegramVote = PostMapper.mapToTelegramVote(update);
-            telegramVote.setTelegramPost(telegramPostRepository.findTopByOrderByCreatedAtDesc());
+            telegramVote.setTelegramPost(getCurrentPost());
             telegramVoteRepository.save(telegramVote);
-            LOGGER.info("Got request for a new girl post!");
+            LOGGER.info(String.format("Got %s request!", update.callbackQuery().data()));
             LOGGER.info("User: " + update.callbackQuery().from());
             checkVote(update);
         } else if (updateContainsValidCommand(update)) {
@@ -238,15 +246,32 @@ public class TelegramService {
     }
 
     private void checkVote(final Update update) {
-        if (isEnoughVotes()) {
-            removeVoteFromMessageReplyMarkup(update);
-            sendNewPostToTelegram();
+        final TelegramVoteType telegramVoteType = valueOf(update.callbackQuery().data());
+        if (isEnoughVotes(telegramVoteType)) {
+            removeVotesFromMessageReplyMarkup(update);
+            switch (telegramVoteType) {
+                case BAN_GIRL:
+                    final String username = banCurrentGirl();
+                    sendMessage(update.message().chat().id().toString(), String.format("Banned that bitch %s for you!", username));
+                    sendNewPostToTelegram(false);
+                    break;
+                case SEND_SAME_GIRL:
+                    sendNewPostToTelegram(true);
+                    break;
+                case SEND_NEW_GIRL:
+                    sendNewPostToTelegram(false);
+                    break;
+            }
         } else {
             incrementMessageReplyMarkup(update);
         }
     }
 
-    private void removeVoteFromMessageReplyMarkup(final Update update) {
+    private String banCurrentGirl() {
+        return instagramService.banAccountByPost(getCurrentPost().getInstagramPost());
+    }
+
+    private void removeVotesFromMessageReplyMarkup(final Update update) {
         final EditMessageReplyMarkup editMessageReplyMarkup =
                 new EditMessageReplyMarkup(update.callbackQuery().message().chat().id(),
                         update.callbackQuery().message().messageId());
@@ -297,24 +322,50 @@ public class TelegramService {
     @NotNull
     private InlineKeyboardMarkup getReplyInlineKeyboardMarkup(final String instagramAccountURL) {
         final InlineKeyboardButton girlAccountUrlKeyboardButton = buildInstagramAccountLinkKeyboardButton(instagramAccountURL);
-        final InlineKeyboardButton voteKeyboardButton = buildVoteKeyboardButton();
-        return buildKeyboardMarkup(girlAccountUrlKeyboardButton, voteKeyboardButton);
+        final InlineKeyboardButton newGirlVoteKeyboardButton = buildNewGirlVoteKeyboardButton();
+        final InlineKeyboardButton sameGirlVoteKeyboardButton = buildSameGirlVoteKeyboardButton();
+        final InlineKeyboardButton banGirlVoteKeyboardButton = buildBanGirlVoteKeyboardButton();
+        return buildKeyboardMarkup(girlAccountUrlKeyboardButton, newGirlVoteKeyboardButton, sameGirlVoteKeyboardButton, banGirlVoteKeyboardButton);
     }
 
     @NotNull
-    private InlineKeyboardMarkup buildKeyboardMarkup(final InlineKeyboardButton girlAccountUrlKeyboardButton, final InlineKeyboardButton voteKeyboardButton) {
+    private InlineKeyboardMarkup buildKeyboardMarkup(final InlineKeyboardButton... inlineKeyboardButtons) {
         final InlineKeyboardMarkup replyKeyboardMarkup = new InlineKeyboardMarkup();
-        replyKeyboardMarkup.addRow(girlAccountUrlKeyboardButton);
-        replyKeyboardMarkup.addRow(voteKeyboardButton);
+        Arrays.stream(inlineKeyboardButtons).forEach(replyKeyboardMarkup::addRow);
         return replyKeyboardMarkup;
     }
 
     @NotNull
-    private InlineKeyboardButton buildVoteKeyboardButton() {
-        final int newTelegramPostCounter = telegramVoteRepository.findByTelegramPost(telegramPostRepository.findTopByOrderByCreatedAtDesc()).size();
-        final InlineKeyboardButton voteKeyboardButton = new InlineKeyboardButton(String.format("Send New Girl! (%s\\4)", newTelegramPostCounter));
-        voteKeyboardButton.callbackData(UPDATE_MESSAGE);
+    private InlineKeyboardButton buildSameGirlVoteKeyboardButton() {
+        final int newTelegramPostCounter = getNewTelegramVoteCounter(SEND_SAME_GIRL);
+        final InlineKeyboardButton voteKeyboardButton = new InlineKeyboardButton(String.format("Send Same Girl! (%s\\4)", newTelegramPostCounter));
+        voteKeyboardButton.callbackData(SEND_SAME_GIRL.name());
         return voteKeyboardButton;
+    }
+
+    @NotNull
+    private InlineKeyboardButton buildBanGirlVoteKeyboardButton() {
+        final int newTelegramPostCounter = getNewTelegramVoteCounter(BAN_GIRL);
+        final InlineKeyboardButton voteKeyboardButton = new InlineKeyboardButton(String.format("Ban Girl! (%s\\8)", newTelegramPostCounter));
+        voteKeyboardButton.callbackData(BAN_GIRL.name());
+        return voteKeyboardButton;
+    }
+
+    @NotNull
+    private InlineKeyboardButton buildNewGirlVoteKeyboardButton() {
+        final int newTelegramPostCounter = getNewTelegramVoteCounter(SEND_NEW_GIRL);
+        final InlineKeyboardButton voteKeyboardButton = new InlineKeyboardButton(String.format("Send New Girl! (%s\\4)", newTelegramPostCounter));
+        voteKeyboardButton.callbackData(SEND_NEW_GIRL.name());
+        return voteKeyboardButton;
+    }
+
+    private int getNewTelegramVoteCounter(final TelegramVoteType telegramVoteType) {
+        final TelegramPost telegramPost = getCurrentPost();
+        return telegramVoteRepository.findByTelegramPostAndTelegramVoteType(telegramPost, telegramVoteType).size();
+    }
+
+    private TelegramPost getCurrentPost() {
+        return telegramPostRepository.findTopByOrderByCreatedAtDesc();
     }
 
     @NotNull
@@ -345,21 +396,23 @@ public class TelegramService {
     }
 
 
-    private boolean isEnoughVotes() {
-        final TelegramPost currentPost = telegramPostRepository.findTopByOrderByCreatedAtDesc();
-        List<TelegramVote> votes = telegramVoteRepository.findByTelegramPost(currentPost);
-        return votes.size() > 3;
+    private boolean isEnoughVotes(final TelegramVoteType telegramVoteType) {
+        final TelegramPost currentPost = getCurrentPost();
+        List<TelegramVote> votes = telegramVoteRepository.findByTelegramPostAndTelegramVoteType(currentPost, telegramVoteType);
+        if (SEND_NEW_GIRL.equals(telegramVoteType) || SEND_SAME_GIRL.equals(telegramVoteType)) {
+            return votes.size() > 3;
+        }
+        return votes.size() > 7;
     }
 
-    private boolean updateContainsValidVote(final Update update) {
+    private boolean isNewVote(final Update update) {
         if (update.callbackQuery() == null) {
             return false;
         }
-        final boolean isUpdateGirl = update.callbackQuery().data().equals(UPDATE_MESSAGE);
-        final boolean isNewUserVote =
-                telegramVoteRepository.findByTelegramUserIdAndTelegramPost(update.callbackQuery().from().id(),
-                        telegramPostRepository.findTopByOrderByCreatedAtDesc()) == null;
-        return isUpdateGirl && isNewUserVote;
+        final TelegramVoteType telegramVoteType = valueOf(update.callbackQuery().data());
+        return telegramVoteRepository.findByTelegramUserIdAndTelegramPostAndTelegramVoteType(update.callbackQuery().from().id(),
+                getCurrentPost(), telegramVoteType) == null;
     }
+
 
 }

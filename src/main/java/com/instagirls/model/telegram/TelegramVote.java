@@ -24,6 +24,9 @@ public class TelegramVote {
     @OneToOne
     private TelegramPost telegramPost;
 
+    @Column
+    private TelegramVoteType telegramVoteType;
+
     @CreationTimestamp
     private LocalDateTime createdAt;
 
