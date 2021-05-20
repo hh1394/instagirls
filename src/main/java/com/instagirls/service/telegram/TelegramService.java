@@ -99,7 +99,7 @@ public class TelegramService {
         }
     }
 
-    @Scheduled(cron = "@daily")
+    @Scheduled(cron = "0 0 8 * * ?")
     public void sendNewPostToTelegram() {
         telegramVoteRepository.deleteAll();
         final InstagramPostDTO instagramPostDTO = instagramService.getNewMostLikedPostFromRandomAccount();
@@ -180,13 +180,13 @@ public class TelegramService {
             if (instagramService.accountExists(accountUsername)) {
                 instagramService.loadNewAccount(accountUsername);
                 sendMessage(update.message().chat().id().toString(), String.format("Loaded %s for you, darling!", accountUsername));
-                telegramMessageRepository.delete(previousUserMessage);
             } else {
                 sendMessage(update.message().chat().id().toString(), String.format("%s doesn't exists or is private! Honey, provide an actual and public account..", accountUsername));
             }
         } else {
             sendMessage(update.message().chat().id().toString(), "Won't do, baby!");
         }
+        telegramMessageRepository.delete(previousUserMessage);
     }
 
     private String extractInstagramAccount(final String text) {

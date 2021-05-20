@@ -17,7 +17,7 @@ public class TelegramPost {
 
     @Id
     @GeneratedValue
-    private UUID id;
+    private UUID uuid;
 
     @OneToOne(optional = false)
     private InstagramPost instagramPost;

@@ -58,19 +58,18 @@ public class InstagramService {
         } else {
             LOGGER.info("IG Client logged in!");
         }
-        instagramAccountRepository.deleteById(3L);
     }
 
     @NotNull
     public InstagramPostDTO getNewMostLikedPostFromRandomAccount() {
         final InstagramAccount instagramAccount = getRandomAccount();
-        Optional<InstagramPost> instagramPost = instagramAccount.getInstagramPosts().stream()
+        final Optional<InstagramPost> instagramPost = instagramAccount.getInstagramPosts().stream()
                 .sorted((ip1, ip2) -> Long.compare(ip2.getLikes(), ip1.getLikes()))
                 .filter(ip -> !ip.isPosted())
                 .findFirst();
         if (instagramPost.isPresent()) {
-            InstagramPost post = instagramPost.get();
-            LOGGER.info("New most liked post ID: " + post.getId());
+            final InstagramPost post = instagramPost.get();
+            LOGGER.info("New most liked post ID: " + post.getUuid());
             return InstagramPostDTO.builder()
                     .instagramPost(post)
                     .instagramAccountURL("https://www.instagram.com/" + instagramAccount.getUsername() + "/")

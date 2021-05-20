@@ -12,7 +12,7 @@ public class TelegramUser {
 
     @Id
     @GeneratedValue
-    private UUID id;
+    private UUID uuid;
 
     @Column(nullable = false, unique = true)
     private Integer telegramId;

@@ -15,7 +15,7 @@ public class InstagramMedia {
 
     @Id
     @GeneratedValue
-    private UUID id;
+    private UUID uuid;
 
     @Column(nullable = false, columnDefinition = "text", length = 512)
     private String url;
