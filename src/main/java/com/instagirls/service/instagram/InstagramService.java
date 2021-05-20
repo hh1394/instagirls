@@ -10,7 +10,6 @@ import com.github.instagram4j.instagram4j.responses.feed.FeedUserResponse;
 import com.github.instagram4j.instagram4j.responses.users.UserResponse;
 import com.instagirls.dto.InstagramPostDTO;
 import com.instagirls.exception.LoginFailedException;
-import com.instagirls.exception.SleepFailedException;
 import com.instagirls.exception.UnexpectedInstagramException;
 import com.instagirls.model.instagram.InstagramAccount;
 import com.instagirls.model.instagram.InstagramMedia;
@@ -19,6 +18,7 @@ import com.instagirls.repository.InstagramAccountRepository;
 import com.instagirls.repository.InstagramMediaRepository;
 import com.instagirls.repository.InstagramPostRepository;
 import com.instagirls.util.InstagramMediaExtractor;
+import com.instagirls.util.ThreadUtil;
 import lombok.SneakyThrows;
 import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
@@ -29,7 +29,6 @@ import org.springframework.stereotype.Service;
 import javax.annotation.PostConstruct;
 import java.util.*;
 import java.util.concurrent.ExecutionException;
-import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 
@@ -182,7 +181,7 @@ public class InstagramService {
     }
 
     private InstagramAccount getRandomAccount() {
-        final List<InstagramAccount> allAccounts = (List<InstagramAccount>) instagramAccountRepository.findAll();
+        final List<InstagramAccount> allAccounts = instagramAccountRepository.findByActiveTrue();
         LOGGER.info("All accounts: " + allAccounts.size());
         final Random rand = new Random();
         final InstagramAccount instagramAccount = allAccounts.get(rand.nextInt(allAccounts.size()));
@@ -207,7 +206,7 @@ public class InstagramService {
     private void retryLogin() {
         ++loginRetryCounter;
         LOGGER.info("Login failed. Retrying in 1 minute..");
-        sleep(1);
+        ThreadUtil.sleep(1);
         performLogin();
     }
 
@@ -218,13 +217,6 @@ public class InstagramService {
                 .login();
     }
 
-    private void sleep(final int minutes) {
-        try {
-            Thread.sleep(TimeUnit.MINUTES.toMillis(minutes));
-        } catch (final InterruptedException interruptedException) {
-            throw new SleepFailedException("Login sleep failed.", interruptedException);
-        }
-    }
 
     public void setPosted(final InstagramPost instagramPost) {
         instagramPost.setPosted(true);

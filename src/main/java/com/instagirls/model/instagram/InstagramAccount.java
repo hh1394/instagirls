@@ -30,7 +30,7 @@ public class InstagramAccount {
     private List<InstagramPost> instagramPosts;
 
     @Column(nullable = false)
-    private boolean isActive = true;
+    private boolean active = true;
 
     @CreationTimestamp
     private LocalDateTime createdAt;

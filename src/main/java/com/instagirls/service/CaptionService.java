@@ -6,8 +6,7 @@ import org.springframework.stereotype.Service;
 public class CaptionService {
 
     public String getCaption() {
-        final Forismatic.Quote quote = new Forismatic().getQuote();
-        return String.format("\"%s\" - %s", quote.getQuoteText(), quote.getQuoteAuthor());
+        return "CAPTION";
     }
 
 }

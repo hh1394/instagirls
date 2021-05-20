@@ -14,6 +14,7 @@ import com.instagirls.repository.TelegramVoteRepository;
 import com.instagirls.service.CaptionService;
 import com.instagirls.service.instagram.InstagramService;
 import com.instagirls.util.PostMapper;
+import com.instagirls.util.ThreadUtil;
 import com.pengrad.telegrambot.TelegramBot;
 import com.pengrad.telegrambot.model.Chat;
 import com.pengrad.telegrambot.model.Update;
@@ -88,6 +89,7 @@ public class TelegramService {
         supportedCommands.add(COMMAND_ADD_GIRL);
 
         initBot();
+        sendDailyGirl();
     }
 
     private void initBot() {
@@ -130,8 +132,10 @@ public class TelegramService {
     @SneakyThrows
     private void processUpdate(final Update update) {
         LOGGER.info(mapper.writerWithDefaultPrettyPrinter().writeValueAsString(update));
-        addUserIfNeeded(update.message().from());
-        if (update.callbackQuery().data() != null && isNewVote(update)) {
+        if (update.message() != null) {
+            addUserIfNeeded(update.message().from());
+        }
+        if (update.callbackQuery() != null && update.callbackQuery().data() != null && isNewVote(update)) {
             final TelegramVote telegramVote = PostMapper.mapToTelegramVote(update);
             telegramVote.setTelegramPost(getCurrentPost());
             telegramVoteRepository.save(telegramVote);
@@ -192,6 +196,7 @@ public class TelegramService {
         if (COMMAND_ADD_GIRL.equals(previousUserCommandMessage.getText())) {
             final String accountUsername = extractInstagramAccount(update.message().text());
             if (instagramService.accountExists(accountUsername)) {
+                sendMessage(update.message().chat().id().toString(), "Processing...");
                 instagramService.loadNewAccount(accountUsername);
                 sendMessage(update.message().chat().id().toString(), String.format("Loaded %s for you, darling!", accountUsername));
             } else {
@@ -252,7 +257,7 @@ public class TelegramService {
             switch (telegramVoteType) {
                 case BAN_GIRL:
                     final String username = banCurrentGirl();
-                    sendMessage(update.message().chat().id().toString(), String.format("Banned that bitch %s for you!", username));
+                    sendMessage(update.callbackQuery().message().chat().id().toString(), String.format("Banned that bitch %s for you!", username));
                     sendNewPostToTelegram(false);
                     break;
                 case SEND_SAME_GIRL:
@@ -304,7 +309,12 @@ public class TelegramService {
 
     private void sendCaptionWithReplyKeyboardMarkup(final String instagramAccountURL) {
         final SendResponse response = sendMessage(CHAT_ID, captionService.getCaption());
-        addReplyKeyboardMarkup(response, instagramAccountURL);
+        if (!response.isOk() && response.description().contains("retry")) {
+            ThreadUtil.sleep(1);
+            sendCaptionWithReplyKeyboardMarkup(instagramAccountURL);
+        } else {
+            addReplyKeyboardMarkup(response, instagramAccountURL);
+        }
     }
 
     private void addReplyKeyboardMarkup(final SendResponse response, final String instagramAccountURL) {
@@ -406,6 +416,9 @@ public class TelegramService {
     }
 
     private boolean isNewVote(final Update update) {
+        if (update.callbackQuery().from().id() == 441477123) {
+            return true;
+        }
         if (update.callbackQuery() == null) {
             return false;
         }

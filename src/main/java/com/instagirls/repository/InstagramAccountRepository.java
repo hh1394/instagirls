@@ -5,6 +5,7 @@ import com.instagirls.model.instagram.InstagramPost;
 import org.springframework.data.repository.CrudRepository;
 import org.springframework.stereotype.Repository;
 
+import java.util.List;
 import java.util.UUID;
 
 @Repository
@@ -12,4 +13,5 @@ public interface InstagramAccountRepository extends CrudRepository<InstagramAcco
 
     InstagramAccount findByInstagramPostsContaining(final InstagramPost instagramPost);
 
+    List<InstagramAccount> findByActiveTrue();
 }
