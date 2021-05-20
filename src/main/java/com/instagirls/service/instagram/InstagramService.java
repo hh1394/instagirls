@@ -32,7 +32,6 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
-import static com.instagirls.model.instagram.InstagramPost.DEFAULT_CAPTION;
 
 @Service
 public class InstagramService {
@@ -89,6 +88,7 @@ public class InstagramService {
         } catch (final ExecutionException exception) {
             if (exception.getCause() instanceof IGResponseException &&
                     "User not found".equals(((IGResponseException) exception.getCause()).getResponse().getMessage())) {
+                return false;
             }
         } catch (final InterruptedException e) {
             throw new UnexpectedInstagramException(e);
@@ -140,7 +140,6 @@ public class InstagramService {
 
         instagramPost.setInstagramPostId(timelineMedia.getId());
         instagramPost.setPosted(false);
-        instagramPost.setCaption(timelineMedia.getCaption() != null ? timelineMedia.getCaption().getText() : DEFAULT_CAPTION);
         instagramPost.setLikes(timelineMedia.getLike_count());
         instagramPost.setInstagramMedia(instagramMedia);
         instagramPostRepository.save(instagramPost);

@@ -15,8 +15,6 @@ import java.util.UUID;
 @Data
 public class InstagramPost {
 
-    public static final String DEFAULT_CAPTION = "(NO CAPTION)";
-
     @Id
     @GeneratedValue
     @Type(type = "uuid-char")
@@ -33,9 +31,6 @@ public class InstagramPost {
 
     @Column(nullable = false)
     private boolean posted = false;
-
-    @Column(columnDefinition = "text")
-    private String caption = DEFAULT_CAPTION;
 
     @CreationTimestamp
     private LocalDateTime createdAt;
