@@ -4,8 +4,10 @@ import com.github.instagram4j.instagram4j.IGClient;
 import com.github.instagram4j.instagram4j.exceptions.IGLoginException;
 import com.github.instagram4j.instagram4j.exceptions.IGResponseException;
 import com.github.instagram4j.instagram4j.models.media.timeline.TimelineMedia;
+import com.github.instagram4j.instagram4j.requests.IGRequest;
 import com.github.instagram4j.instagram4j.requests.feed.FeedUserRequest;
 import com.github.instagram4j.instagram4j.requests.users.UsersUsernameInfoRequest;
+import com.github.instagram4j.instagram4j.responses.IGResponse;
 import com.github.instagram4j.instagram4j.responses.feed.FeedUserResponse;
 import com.github.instagram4j.instagram4j.responses.users.UserResponse;
 import com.instagirls.dto.InstagramPostDTO;
@@ -24,6 +26,7 @@ import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 
 import javax.annotation.PostConstruct;
@@ -108,12 +111,16 @@ public class InstagramService {
     public void loadNewAccount(final String username) {
         LOGGER.info("Loading new account: " + username);
         InstagramAccount instagramAccount = new InstagramAccount(username);
-        instagramAccount = instagramAccountRepository.save(instagramAccount);
+        try {
+            instagramAccount = instagramAccountRepository.save(instagramAccount);
+        } catch (DataIntegrityViolationException exception) {
+            LOGGER.info("Account exists!");
+            return;
+        }
         loadAllPostsForAccount(instagramAccount);
     }
 
 
-    @SneakyThrows
     // TODO load only new
     private void loadAllPostsForAccount(final InstagramAccount instagramAccount) {
         final Set<TimelineMedia> items = new HashSet<>();
@@ -121,12 +128,12 @@ public class InstagramService {
 
         final Long pk = getUserPK(instagramAccount);
         final FeedUserRequest request = new FeedUserRequest(pk);
-        feedUserResponse = igClient.sendRequest(request).get();
+        feedUserResponse = sendRequest(request);
         items.addAll(feedUserResponse.getItems());
 
         while (feedUserResponse.isMore_available()) {
             request.setMax_id(feedUserResponse.getNext_max_id());
-            feedUserResponse = igClient.sendRequest(request).get();
+            feedUserResponse = sendRequest(request);
             items.addAll(feedUserResponse.getItems());
             LOGGER.info("Batch: " + feedUserResponse.getItems().size());
             LOGGER.info("Overall: " + items.size());
@@ -137,6 +144,17 @@ public class InstagramService {
         List<InstagramPost> instagramPosts = items.stream().map(this::saveAsInstagramPostWithMedia).collect(Collectors.toList());
         instagramAccount.setInstagramPosts(instagramPosts);
         instagramAccountRepository.save(instagramAccount);
+    }
+
+    private <T extends IGResponse> T sendRequest(final IGRequest<T> request) {
+        try {
+            return igClient.sendRequest(request).get();
+        } catch (ExecutionException | InterruptedException e) {
+            e.printStackTrace();
+            ThreadUtil.sleep(1);
+            LOGGER.info("Retyring..");
+            return sendRequest(request);
+        }
     }
 
     private InstagramPost saveAsInstagramPostWithMedia(final TimelineMedia timelineMedia) {
