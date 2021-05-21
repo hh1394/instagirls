@@ -41,6 +41,8 @@ import java.util.Arrays;
 import java.util.List;
 
 import static com.instagirls.model.telegram.TelegramVoteType.*;
+import static com.instagirls.util.Util.generateEndearment;
+import static com.instagirls.util.Util.generateInsult;
 
 @Service
 public class TelegramService {
@@ -196,6 +198,7 @@ public class TelegramService {
                 processPrivateMessage(update);
             } else {
                 LOGGER.info("Unsupported chat type: " + type);
+                sendMessage(update.message().chat().id().toString(), String.format("%s, %s, call me directly!", update.message().from().firstName(), generateEndearment()));
             }
         }
     }
@@ -210,12 +213,12 @@ public class TelegramService {
             if (instagramService.accountExists(accountUsername)) {
                 sendMessage(update.message().chat().id().toString(), "Processing...");
                 instagramService.loadNewAccount(accountUsername);
-                sendMessage(update.message().chat().id().toString(), String.format("Loaded %s for you, darling!", accountUsername));
+                sendMessage(update.message().chat().id().toString(), String.format("Loaded %s for you, %s!", accountUsername, generateEndearment()));
             } else {
-                sendMessage(update.message().chat().id().toString(), String.format("%s doesn't exists or is private! Honey, provide an actual and public account..", accountUsername));
+                sendMessage(update.message().chat().id().toString(), String.format("%s doesn't exists or is private! %s, provide an actual and public account..", accountUsername, generateEndearment()));
             }
         } else {
-            sendMessage(update.message().chat().id().toString(), "Won't do, baby!");
+            sendMessage(update.message().chat().id().toString(), String.format("Won't do, %s!", generateEndearment()));
         }
         telegramMessageRepository.delete(previousUserCommandMessage);
     }
@@ -250,7 +253,7 @@ public class TelegramService {
         final TelegramUser telegramUser = telegramUserRepository.findByTelegramId(telegramUserId);
         telegramMessageRepository.save(new TelegramMessage(update.message().messageId(), telegramUser, update.message().text()));
         sendMessage(telegramUserId.toString(),
-                "Send me girl account you want to add, honey..");
+                String.format("Send me girl account you want to add, %s..", generateEndearment()));
     }
 
     private boolean updateContainsValidCommand(final Update update) {
@@ -269,7 +272,7 @@ public class TelegramService {
             switch (telegramVoteType) {
                 case BAN_GIRL:
                     final String username = banCurrentGirl();
-                    sendMessage(update.callbackQuery().message().chat().id().toString(), String.format("Banned that bitch %s for you!", username));
+                    sendMessage(update.callbackQuery().message().chat().id().toString(), String.format("Banned that %s '%s' for you!", generateInsult(), username));
                     sendNewPostToTelegram(false);
                     break;
                 case SEND_SAME_GIRL:

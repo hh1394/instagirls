@@ -30,9 +30,14 @@ import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 
 import javax.annotation.PostConstruct;
-import java.util.*;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Optional;
+import java.util.Set;
 import java.util.concurrent.ExecutionException;
 import java.util.stream.Collectors;
+
+import static com.instagirls.util.Util.getRandomElement;
 
 
 @Service
@@ -201,8 +206,7 @@ public class InstagramService {
     private InstagramAccount getRandomAccount() {
         final List<InstagramAccount> allAccounts = instagramAccountRepository.findByActiveTrue();
         LOGGER.info("All accounts: " + allAccounts.size());
-        final Random rand = new Random();
-        final InstagramAccount instagramAccount = allAccounts.get(rand.nextInt(allAccounts.size()));
+        final InstagramAccount instagramAccount = getRandomElement(allAccounts);
         LOGGER.info("Random instagram account: " + instagramAccount.getUsername());
         return instagramAccount;
     }
