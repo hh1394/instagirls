@@ -56,6 +56,7 @@ public class TelegramService {
     private final ObjectMapper mapper = new ObjectMapper();
     private final List<String> supportedCommands = new ArrayList<>();
     private TelegramBot bot;
+
     @Autowired
     private TelegramVoteRepository telegramVoteRepository;
     @Autowired
@@ -198,7 +199,7 @@ public class TelegramService {
                 processPrivateMessage(update);
             } else {
                 LOGGER.info("Unsupported chat type: " + type);
-                sendMessage(update.message().chat().id().toString(), String.format("%s, %s, call me directly!", update.message().from().firstName(), generateEndearment()));
+//                sendMessage(update.message().chat().id().toString(), String.format("%s, %s, call me directly!", update.message().from().firstName(), generateEndearment()));
             }
         }
     }

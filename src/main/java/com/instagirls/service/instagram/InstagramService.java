@@ -19,7 +19,7 @@ import com.instagirls.model.instagram.InstagramPost;
 import com.instagirls.repository.InstagramAccountRepository;
 import com.instagirls.repository.InstagramMediaRepository;
 import com.instagirls.repository.InstagramPostRepository;
-import com.instagirls.util.InstagramMediaExtractor;
+import com.instagirls.util.InstagramMediaDownloader;
 import com.instagirls.util.ThreadUtil;
 import lombok.SneakyThrows;
 import org.jetbrains.annotations.NotNull;
@@ -119,14 +119,83 @@ public class InstagramService {
         try {
             instagramAccount = instagramAccountRepository.save(instagramAccount);
         } catch (DataIntegrityViolationException exception) {
-            LOGGER.info("Account exists!");
-            return;
+            LOGGER.info("Account exists! Checking for new posts..");
+            instagramAccount = instagramAccountRepository.findByUsername(username);
         }
-        loadAllPostsForAccount(instagramAccount);
+        loadPostsForAccount(instagramAccount);
     }
 
+    private void loadPostsForAccount(final InstagramAccount instagramAccount) {
+        Optional<InstagramPost> firstOrderByTakenAtDesc = instagramPostRepository.findTopByInstagramAccountOrderByTakenAtDesc(instagramAccount.getUuid().toString());
+        if (firstOrderByTakenAtDesc.isPresent()) {
+            LOGGER.info("Loading only new posts!");
+            loadPostsNewerThan(firstOrderByTakenAtDesc.get().getTakenAt(), instagramAccount);
+        } else {
+            LOGGER.info("Loading all posts!");
+            loadAllPostsForAccount(instagramAccount);
+        }
+    }
 
-    // TODO load only new
+    // TODO refactor
+    private void loadPostsNewerThan(final Long takenAt, final InstagramAccount instagramAccount) {
+        final Long pk = getUserPK(instagramAccount);
+        final FeedUserRequest request = new FeedUserRequest(pk);
+        FeedUserResponse feedUserResponse = sendRequest(request);
+        int batchSize = feedUserResponse.getNum_results();
+        final Set<TimelineMedia> items = feedUserResponse.getItems()
+                .stream()
+                .filter(i -> i.getTaken_at() > takenAt)
+                .collect(Collectors.toSet());
+
+        if (batchSize > items.size()) {
+            LOGGER.info("Found border.");
+        } else {
+            boolean borderReached = false;
+            while (feedUserResponse.isMore_available() && !borderReached) {
+                request.setMax_id(feedUserResponse.getNext_max_id());
+                feedUserResponse = sendRequest(request);
+
+                batchSize = feedUserResponse.getNum_results();
+                final Set<TimelineMedia> responseItems = feedUserResponse.getItems()
+                        .stream()
+                        .filter(i -> i.getTaken_at() > takenAt)
+                        .collect(Collectors.toSet());
+
+                if (batchSize > responseItems.size()) {
+                    LOGGER.info("Found border.");
+                    borderReached = true;
+                }
+
+                items.addAll(responseItems);
+                LOGGER.info("Batch: " + feedUserResponse.getItems().size());
+                LOGGER.info("Overall: " + items.size());
+                LOGGER.info("Loading more posts!");
+            }
+        }
+        LOGGER.info("Done loading posts!");
+
+        List<InstagramPost> instagramPosts = items.stream().map(this::saveAsInstagramPostWithMedia).collect(Collectors.toList());
+        instagramAccount.setInstagramPosts(instagramPosts);
+        instagramAccountRepository.save(instagramAccount);
+    }
+
+    private void loadMorePosts(final InstagramAccount instagramAccount, final Set<TimelineMedia> items, final FeedUserRequest request, FeedUserResponse feedUserResponse) {
+        while (feedUserResponse.isMore_available()) {
+            request.setMax_id(feedUserResponse.getNext_max_id());
+            feedUserResponse = sendRequest(request);
+            items.addAll(feedUserResponse.getItems());
+            LOGGER.info("Batch: " + feedUserResponse.getItems().size());
+            LOGGER.info("Overall: " + items.size());
+            LOGGER.info("Loading more posts!");
+        }
+
+        List<InstagramPost> instagramPosts = items.stream().map(this::saveAsInstagramPostWithMedia).collect(Collectors.toList());
+        instagramAccount.setInstagramPosts(instagramPosts);
+        instagramAccountRepository.save(instagramAccount);
+        LOGGER.info("Done loading posts!");
+
+    }
+
     private void loadAllPostsForAccount(final InstagramAccount instagramAccount) {
         final Set<TimelineMedia> items = new HashSet<>();
         FeedUserResponse feedUserResponse;
@@ -136,19 +205,7 @@ public class InstagramService {
         feedUserResponse = sendRequest(request);
         items.addAll(feedUserResponse.getItems());
 
-        while (feedUserResponse.isMore_available()) {
-            request.setMax_id(feedUserResponse.getNext_max_id());
-            feedUserResponse = sendRequest(request);
-            items.addAll(feedUserResponse.getItems());
-            LOGGER.info("Batch: " + feedUserResponse.getItems().size());
-            LOGGER.info("Overall: " + items.size());
-            LOGGER.info("Loading more posts!");
-        }
-        LOGGER.info("Done loading posts!");
-
-        List<InstagramPost> instagramPosts = items.stream().map(this::saveAsInstagramPostWithMedia).collect(Collectors.toList());
-        instagramAccount.setInstagramPosts(instagramPosts);
-        instagramAccountRepository.save(instagramAccount);
+        loadMorePosts(instagramAccount, items, request, feedUserResponse);
     }
 
     private <T extends IGResponse> T sendRequest(final IGRequest<T> request) {
@@ -164,14 +221,16 @@ public class InstagramService {
 
     private InstagramPost saveAsInstagramPostWithMedia(final TimelineMedia timelineMedia) {
 
-        List<InstagramMedia> instagramMedia = InstagramMediaExtractor.extractMedia(timelineMedia);
+        List<InstagramMedia> instagramMedia = InstagramMediaDownloader.downloadMedia(timelineMedia);
         instagramMediaRepository.saveAll(instagramMedia);
 
         InstagramPost instagramPost = new InstagramPost();
 
         instagramPost.setInstagramPostId(timelineMedia.getId());
+        instagramPost.setInstagramPostCode(timelineMedia.getCode());
         instagramPost.setPosted(false);
         instagramPost.setLikes(timelineMedia.getLike_count());
+        instagramPost.setTakenAt(timelineMedia.getTaken_at());
         instagramPost.setInstagramMedia(instagramMedia);
         instagramPostRepository.save(instagramPost);
 

@@ -149,3 +149,4 @@ typings/
 # VSCode
 .vscode
 hcp-portal-war/src/main/webapp/ng-app/server1.js
+images

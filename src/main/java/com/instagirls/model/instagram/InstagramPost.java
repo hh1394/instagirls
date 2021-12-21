@@ -23,6 +23,9 @@ public class InstagramPost {
     @Column(nullable = false, unique = true)
     private String instagramPostId;
 
+    @Column(nullable = false, unique = true)
+    private String instagramPostCode;
+
     @OneToMany(fetch = FetchType.EAGER)
     private List<InstagramMedia> instagramMedia;
 
@@ -31,6 +34,9 @@ public class InstagramPost {
 
     @Column(nullable = false)
     private boolean posted = false;
+
+    @Column(nullable = false)
+    private long takenAt;
 
     @CreationTimestamp
     private LocalDateTime createdAt;

@@ -13,5 +13,7 @@ public interface InstagramAccountRepository extends CrudRepository<InstagramAcco
 
     InstagramAccount findByInstagramPostsContaining(final InstagramPost instagramPost);
 
+    InstagramAccount findByUsername(final String username);
+
     List<InstagramAccount> findByActiveTrue();
 }

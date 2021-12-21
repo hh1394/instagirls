@@ -18,6 +18,7 @@ dependencies {
     implementation group: 'org.springframework.boot', name: 'spring-boot-starter-parent', version: '2.4.5'
     implementation group: 'org.springframework.boot', name: 'spring-boot-starter-data-jpa', version: '2.4.5'
     implementation group: 'mysql', name: 'mysql-connector-java', version: '8.0.25'
+    implementation group: 'commons-io', name: 'commons-io', version: '2.11.0'
 
     implementation group: 'com.github.instagram4j', name: 'instagram4j', version: '2.0.4'
     implementation group: 'com.github.pengrad', name: 'java-telegram-bot-api', version: '5.1.0'
