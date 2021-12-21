@@ -5,6 +5,7 @@ import com.fasterxml.jackson.annotation.PropertyAccessor;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.instagirls.dto.InstagramPostDTO;
 import com.instagirls.exception.EmptyTelegramMessageException;
+import com.instagirls.exception.UnsupportedMediaFormatException;
 import com.instagirls.model.instagram.InstagramMedia;
 import com.instagirls.model.telegram.*;
 import com.instagirls.repository.TelegramMessageRepository;
@@ -19,10 +20,7 @@ import com.pengrad.telegrambot.TelegramBot;
 import com.pengrad.telegrambot.model.Chat;
 import com.pengrad.telegrambot.model.Update;
 import com.pengrad.telegrambot.model.User;
-import com.pengrad.telegrambot.model.request.InlineKeyboardButton;
-import com.pengrad.telegrambot.model.request.InlineKeyboardMarkup;
-import com.pengrad.telegrambot.model.request.InputMedia;
-import com.pengrad.telegrambot.model.request.InputMediaPhoto;
+import com.pengrad.telegrambot.model.request.*;
 import com.pengrad.telegrambot.request.EditMessageReplyMarkup;
 import com.pengrad.telegrambot.request.SendMediaGroup;
 import com.pengrad.telegrambot.request.SendMessage;
@@ -36,6 +34,7 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
 import javax.annotation.PostConstruct;
+import java.io.File;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -135,7 +134,7 @@ public class TelegramService {
 
     @SneakyThrows
     private void processUpdate(final Update update) {
-        LOGGER.info(mapper.writerWithDefaultPrettyPrinter().writeValueAsString(update));
+        LOGGER.debug(mapper.writerWithDefaultPrettyPrinter().writeValueAsString(update));
         if (update.message() != null) {
             addUserIfNeeded(update.message().from());
         }
@@ -324,13 +323,17 @@ public class TelegramService {
     }
 
     private void sendCaptionWithReplyKeyboardMarkup(final String instagramAccountURL) {
+        LOGGER.info("Sending caption with reply keyboard markup..");
         final SendResponse response = sendMessage(CHAT_ID, captionService.getCaption());
         if (!response.isOk() && response.description().contains("retry")) {
+            LOGGER.info("Could not send reply keyboard markup. Retrying..");
             ThreadUtil.sleep(1);
             sendCaptionWithReplyKeyboardMarkup(instagramAccountURL);
         } else {
+            LOGGER.info("Adding reply keyboard markup..");
             addReplyKeyboardMarkup(response, instagramAccountURL);
         }
+        LOGGER.info("Done!");
     }
 
     private void addReplyKeyboardMarkup(final SendResponse response, final String instagramAccountURL) {
@@ -415,8 +418,17 @@ public class TelegramService {
     private List<InputMedia<?>> mapMedias(final TelegramPost telegramPost) {
         final List<InputMedia<?>> inputMedia = new ArrayList<>();
         for (InstagramMedia instagramPostMedia : telegramPost.getInstagramPost().getInstagramMedia()) {
-            InputMediaPhoto photo = new InputMediaPhoto(instagramPostMedia.getUrl());
-            inputMedia.add(photo);
+            String url = instagramPostMedia.getUrl();
+            File media = new File(url);
+            if (url.endsWith("mp4")) {
+                InputMediaVideo video = new InputMediaVideo(media);
+                inputMedia.add(video);
+            } else if (url.endsWith("jpg")) {
+                InputMediaPhoto photo = new InputMediaPhoto(media);
+                inputMedia.add(photo);
+            } else {
+                throw new UnsupportedMediaFormatException("Unknown file format: " + url);
+            }
         }
         return inputMedia;
     }
