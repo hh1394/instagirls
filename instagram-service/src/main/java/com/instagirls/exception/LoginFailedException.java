@@ -1,6 +1,5 @@
 package com.instagirls.exception;
 
-import com.github.instagram4j.instagram4j.exceptions.IGLoginException;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 
@@ -9,9 +8,9 @@ import lombok.EqualsAndHashCode;
 public class LoginFailedException extends RuntimeException {
 
     private String message;
-    private IGLoginException reason;
+    private Exception reason;
 
-    public LoginFailedException(final String message, final IGLoginException reason) {
+    public LoginFailedException(final String message, final Exception reason) {
         super(message, reason);
         this.message = message;
         this.reason = reason;

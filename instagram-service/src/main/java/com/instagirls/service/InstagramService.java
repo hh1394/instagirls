@@ -1,22 +1,15 @@
 package com.instagirls.service;
 
-import com.github.instagram4j.instagram4j.IGClient;
-import com.github.instagram4j.instagram4j.exceptions.IGLoginException;
 import com.github.instagram4j.instagram4j.models.media.timeline.TimelineMedia;
-import com.github.instagram4j.instagram4j.requests.IGRequest;
 import com.github.instagram4j.instagram4j.requests.feed.FeedUserRequest;
-import com.github.instagram4j.instagram4j.responses.IGResponse;
 import com.github.instagram4j.instagram4j.responses.feed.FeedUserResponse;
 import com.instagirls.dto.InstagramPostDTO;
 import com.instagirls.exception.InstagramAccountExistsException;
-import com.instagirls.exception.LoginFailedException;
 import com.instagirls.model.InstagramAccount;
 import com.instagirls.model.InstagramMedia;
 import com.instagirls.model.InstagramPost;
 import com.instagirls.repository.InstagramAccountRepository;
-import com.instagirls.repository.InstagramMediaRepository;
 import com.instagirls.repository.InstagramPostRepository;
-import com.instagirls.util.ThreadUtil;
 import lombok.SneakyThrows;
 import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
@@ -38,25 +31,16 @@ public class InstagramService {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(InstagramService.class);
     private final static Random rand = new Random();
-    private static IGClient igClient;
-    private static int loginRetryCounter = 0;
+
+    @Autowired
+    private APIService apiService;
+
     @Autowired
     private InstagramAccountRepository instagramAccountRepository;
 
     @Autowired
     private InstagramPostRepository instagramPostRepository;
 
-    @Autowired
-    private InstagramMediaRepository instagramMediaRepository;
-
-    private void login() {
-        if (igClient == null || !igClient.isLoggedIn()) {
-            LOGGER.info("IG Client not logged in!");
-            performLogin();
-        } else {
-            LOGGER.info("IG Client logged in!");
-        }
-    }
 
     public InstagramPostDTO getNewMostLikedPostFromAccount(final String username) {
         final InstagramAccount instagramAccount = instagramAccountRepository.findByUsername(username);
@@ -95,7 +79,6 @@ public class InstagramService {
 
     public void loadNewAccount(final String username) {
         LOGGER.info("Loading new account: " + username);
-        login();
         InstagramAccount instagramAccount = new InstagramAccount(username);
         try {
             instagramAccount = instagramAccountRepository.save(instagramAccount);
@@ -122,7 +105,7 @@ public class InstagramService {
     private void loadPostsNewerThan(final Long takenAt, final InstagramAccount instagramAccount) {
         final Long pk = getUserPK(instagramAccount);
         final FeedUserRequest request = new FeedUserRequest(pk);
-        FeedUserResponse feedUserResponse = sendRequest(request);
+        FeedUserResponse feedUserResponse = apiService.sendRequest(request);
         int batchSize = feedUserResponse.getNum_results();
         final Set<TimelineMedia> items = feedUserResponse.getItems()
                 .stream()
@@ -135,7 +118,7 @@ public class InstagramService {
             boolean borderReached = false;
             while (feedUserResponse.isMore_available() && !borderReached) {
                 request.setMax_id(feedUserResponse.getNext_max_id());
-                feedUserResponse = sendRequest(request);
+                feedUserResponse = apiService.sendRequest(request);
 
                 batchSize = feedUserResponse.getNum_results();
                 final Set<TimelineMedia> responseItems = feedUserResponse.getItems()
@@ -156,7 +139,7 @@ public class InstagramService {
         }
         LOGGER.info("Done loading posts!");
 
-        List<InstagramPost> instagramPosts = items.parallelStream().map(this::saveAsInstagramPostWithMedia).collect(Collectors.toList());
+        List<InstagramPost> instagramPosts = items.parallelStream().map(this::saveAsInstagramPost).collect(Collectors.toList());
         instagramAccount.setInstagramPosts(instagramPosts);
         instagramAccountRepository.save(instagramAccount);
     }
@@ -166,22 +149,22 @@ public class InstagramService {
 
         final Long pk = getUserPK(instagramAccount);
         final FeedUserRequest request = new FeedUserRequest(pk);
-        feedUserResponse = sendRequest(request);
+        feedUserResponse = apiService.sendRequest(request);
 
         List<InstagramPost> posts = feedUserResponse.getItems().parallelStream()
-                .map(this::saveAsInstagramPostWithMedia)
+                .map(this::saveAsInstagramPost)
                 .collect(Collectors.toList());
         instagramAccount.addInstagramPosts(posts);
 
         while (feedUserResponse.isMore_available()) {
             request.setMax_id(feedUserResponse.getNext_max_id());
-            feedUserResponse = sendRequest(request);
+            feedUserResponse = apiService.sendRequest(request);
 
             final List<TimelineMedia> itemsChunk = feedUserResponse.getItems();
             Runnable task = () -> {
                 LOGGER.debug("Started new thread");
                 List<InstagramPost> instagramPosts = itemsChunk.parallelStream()
-                        .map(this::saveAsInstagramPostWithMedia)
+                        .map(this::saveAsInstagramPost)
                         .collect(Collectors.toList());
                 instagramAccount.addInstagramPosts(instagramPosts);
             };
@@ -199,21 +182,7 @@ public class InstagramService {
         LOGGER.info("Done loading posts!");
     }
 
-    private <T extends IGResponse> T sendRequest(final IGRequest<T> request) {
-        try {
-            return igClient.sendRequest(request).get();
-        } catch (ExecutionException | InterruptedException e) {
-            e.printStackTrace();
-            ThreadUtil.sleep(1);
-            LOGGER.info("Retyring..");
-            return sendRequest(request);
-        }
-    }
-
-    private InstagramPost saveAsInstagramPostWithMedia(final TimelineMedia timelineMedia) {
-
-//        List<InstagramMedia> instagramMedia = InstagramMediaDownloader.downloadMedia(timelineMedia);
-//        instagramMediaRepository.saveAll(instagramMedia);
+    private InstagramPost saveAsInstagramPost(final TimelineMedia timelineMedia) {
 
         final InstagramPost instagramPost = new InstagramPost();
 
@@ -221,7 +190,6 @@ public class InstagramService {
         instagramPost.setInstagramPostCode(timelineMedia.getCode());
         instagramPost.setLikes(timelineMedia.getLike_count());
         instagramPost.setTakenAt(timelineMedia.getTaken_at());
-//        instagramPost.setInstagramMedia(instagramMedia);
         instagramPostRepository.save(instagramPost);
 
         return instagramPost;
@@ -238,8 +206,7 @@ public class InstagramService {
     }
 
     private Long loadUserPk(final InstagramAccount instagramAccount) throws InterruptedException, ExecutionException {
-        Long pk = igClient.actions().users()
-                .findByUsername(instagramAccount.getUsername()).get().getUser().getPk();
+        Long pk = apiService.loadPk(instagramAccount);
         instagramAccount.setInstagramPk(pk);
         instagramAccountRepository.save(instagramAccount);
         return pk;
@@ -259,47 +226,9 @@ public class InstagramService {
         return instagramAccount;
     }
 
-    private void performLogin() {
-        LOGGER.info("Performing login.. ");
-        try {
-            loginToInstagram();
-        } catch (final IGLoginException e) {
-            if (loginRetryCounter < 3) {
-                retryLogin();
-            } else {
-                throw new LoginFailedException("Login failed after 3 retries!", e);
-            }
-        }
-        LOGGER.info("Login performed.");
-    }
-
-    private void retryLogin() {
-        ++loginRetryCounter;
-        LOGGER.info("Login failed. Retrying in 1 minute..");
-        ThreadUtil.sleep(1);
-        performLogin();
-    }
-
-    private void loginToInstagram() throws IGLoginException {
-        igClient = IGClient.builder()
-                .username(System.getenv("instagram_username"))
-                .password(System.getenv("instagram_password"))
-                .login();
-    }
-
-
     public void setPosted(final String postCode) {
         instagramPostRepository.setPosted(postCode);
         LOGGER.info(String.format("Post %s is set to POSTED!", postCode));
     }
-
-    public String banAccountByPost(final InstagramPost instagramPost) {
-        final InstagramAccount instagramAccount = instagramAccountRepository.findByInstagramPostsContaining(instagramPost);
-        instagramAccount.setActive(false);
-        instagramAccountRepository.save(instagramAccount);
-        LOGGER.info("Banned " + instagramAccount.getUsername());
-        return instagramAccount.getUsername();
-    }
-
 
 }
