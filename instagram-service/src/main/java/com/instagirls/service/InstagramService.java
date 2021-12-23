@@ -215,11 +215,10 @@ public class InstagramService {
 //        List<InstagramMedia> instagramMedia = InstagramMediaDownloader.downloadMedia(timelineMedia);
 //        instagramMediaRepository.saveAll(instagramMedia);
 
-        InstagramPost instagramPost = new InstagramPost();
+        final InstagramPost instagramPost = new InstagramPost();
 
         instagramPost.setInstagramPostId(timelineMedia.getId());
         instagramPost.setInstagramPostCode(timelineMedia.getCode());
-        instagramPost.setPosted(false);
         instagramPost.setLikes(timelineMedia.getLike_count());
         instagramPost.setTakenAt(timelineMedia.getTaken_at());
 //        instagramPost.setInstagramMedia(instagramMedia);

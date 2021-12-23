@@ -20,10 +20,8 @@ public interface InstagramPostRepository extends CrudRepository<InstagramPost, U
                     "limit 1")
     Optional<InstagramPost> findTopByInstagramAccountOrderByTakenAtDesc(final String instagramAccountUUID);
 
-    InstagramPost findByInstagramPostCode(String postCode);
-
     @Modifying
     @Query("update InstagramPost post set post.posted = true where post.instagramPostCode = :postCode")
-    void setPosted(@Param("phone") String postCode);
+    void setPosted(@Param("postCode") String postCode);
 
 }
