@@ -63,7 +63,7 @@ public class InstagramService {
             LOGGER.info("New most liked post ID: " + post.getUuid());
             List<String> mediaURLs = apiService.getMediaURLsByPostId(post.getInstagramPostId());
             return InstagramPostDTO.builder()
-                    .account("https://www.instagram.com/" + instagramAccount.getUsername() + "/")
+                    .account(instagramAccount.getUsername())
                     .postCode(post.getInstagramPostCode())
                     .mediaURLs(mediaURLs)
                     .build();

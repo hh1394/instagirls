@@ -4,6 +4,7 @@ import com.pengrad.telegrambot.model.Chat;
 import lombok.Data;
 import org.hibernate.annotations.Type;
 
+import javax.persistence.*;
 import java.util.UUID;
 
 @Entity

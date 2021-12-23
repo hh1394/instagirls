@@ -3,6 +3,7 @@ package com.instagirls.model;
 import lombok.Data;
 import org.hibernate.annotations.Type;
 
+import javax.persistence.*;
 import java.util.UUID;
 
 @Entity

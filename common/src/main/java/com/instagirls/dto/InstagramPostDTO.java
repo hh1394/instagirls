@@ -13,4 +13,8 @@ public class InstagramPostDTO {
     private String postCode;
     private List<String> mediaURLs;
 
+    public String getAccountURL() {
+        return "https://www.instagram.com/" + account + "/";
+    }
+
 }

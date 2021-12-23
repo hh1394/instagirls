@@ -5,19 +5,20 @@ import com.fasterxml.jackson.annotation.PropertyAccessor;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.instagirls.dto.InstagramPostDTO;
 import com.instagirls.exception.EmptyTelegramMessageException;
+import com.instagirls.exception.InstagramAccountDoesntExistException;
 import com.instagirls.exception.UnsupportedMediaFormatException;
-import com.instagirls.model.instagram.InstagramMedia;
+import com.instagirls.model.*;
 import com.instagirls.repository.TelegramMessageRepository;
 import com.instagirls.repository.TelegramPostRepository;
 import com.instagirls.repository.TelegramUserRepository;
 import com.instagirls.repository.TelegramVoteRepository;
-import com.instagirls.service.instagram.InstagramService;
 import com.instagirls.util.PostMapper;
 import com.instagirls.util.ThreadUtil;
 import com.pengrad.telegrambot.TelegramBot;
 import com.pengrad.telegrambot.model.Chat;
 import com.pengrad.telegrambot.model.Update;
 import com.pengrad.telegrambot.model.User;
+import com.pengrad.telegrambot.model.request.*;
 import com.pengrad.telegrambot.request.EditMessageReplyMarkup;
 import com.pengrad.telegrambot.request.SendMediaGroup;
 import com.pengrad.telegrambot.request.SendMessage;
@@ -112,15 +113,15 @@ public class TelegramService {
         telegramVoteRepository.deleteAll();
         final InstagramPostDTO instagramPostDTO;
         if (sameGirl) {
-            instagramPostDTO = instagramService.getNewMostLikedPostFromAccount(getCurrentPost().getInstagramPost());
+            instagramPostDTO = instagramService.getNewMostLikedPostFromAccount(getCurrentPost().getInstagramUsername());
         } else {
             instagramPostDTO = instagramService.getNewMostLikedPostFromRandomAccount();
         }
-        TelegramPost telegramPost = new TelegramPost(instagramPostDTO.getInstagramPost());
-        telegramPost = telegramPostRepository.save(telegramPost);
-        sendContentToChat(telegramPost, instagramPostDTO.getInstagramAccountURL());
+        TelegramPost telegramPost = new TelegramPost(instagramPostDTO);
+        telegramPostRepository.save(telegramPost);
+        sendContentToChat(instagramPostDTO);
 
-        instagramService.setPosted(telegramPost.getInstagramPost());
+        instagramService.setPosted(instagramPostDTO.getPostCode());
     }
 
     private int processUpdates(final List<Update> updates) {
@@ -207,13 +208,14 @@ public class TelegramService {
         }
         if (COMMAND_ADD_GIRL.equals(previousUserCommandMessage.getText())) {
             final String accountUsername = extractInstagramAccount(update.message().text());
-            if (instagramService.accountExists(accountUsername)) {
-                sendMessage(update.message().chat().id().toString(), "Processing...");
+
+            sendMessage(update.message().chat().id().toString(), "Processing...");
+            try {
                 instagramService.loadNewAccount(accountUsername);
-                sendMessage(update.message().chat().id().toString(), String.format("Loaded %s for you, %s!", accountUsername, generateEndearment()));
-            } else {
+            } catch (InstagramAccountDoesntExistException exception) {
                 sendMessage(update.message().chat().id().toString(), String.format("%s doesn't exists or is private! %s, provide an actual and public account..", accountUsername, generateEndearment()));
             }
+            sendMessage(update.message().chat().id().toString(), String.format("Loaded %s for you, %s!", accountUsername, generateEndearment()));
         } else {
             sendMessage(update.message().chat().id().toString(), String.format("Won't do, %s!", generateEndearment()));
         }
@@ -285,7 +287,7 @@ public class TelegramService {
     }
 
     private String banCurrentGirl() {
-        return instagramService.banAccountByPost(getCurrentPost().getInstagramPost());
+        return instagramService.disableAccount(getCurrentPost().getInstagramUsername());
     }
 
     private void removeVotesFromMessageReplyMarkup(final Update update) {
@@ -314,10 +316,9 @@ public class TelegramService {
         bot.execute(editMessageReplyMarkup);
     }
 
-    private void sendContentToChat(final TelegramPost telegramPost, final String instagramAccountURL) {
-//        sendMedia(telegramPost);
-        sendMessage(CHAT_ID, "https://www.instagram.com/p/" + telegramPost.getInstagramPost().getInstagramPostCode()  + "/");
-        sendCaptionWithReplyKeyboardMarkup(instagramAccountURL);
+    private void sendContentToChat(final InstagramPostDTO instagramPostDTO) {
+        sendMedia(instagramPostDTO);
+        sendCaptionWithReplyKeyboardMarkup(instagramPostDTO.getAccountURL());
     }
 
     private void sendCaptionWithReplyKeyboardMarkup(final String instagramAccountURL) {
@@ -407,25 +408,24 @@ public class TelegramService {
         return bot.execute(sendMessage);
     }
 
-    private void sendMedia(final TelegramPost telegramPost) {
-        final List<InputMedia<?>> medias = mapMedias(telegramPost);
+    private void sendMedia(final InstagramPostDTO instagramPostDTO) {
+        final List<InputMedia<?>> medias = mapMedias(instagramPostDTO);
         final SendMediaGroup request = new SendMediaGroup(CHAT_ID, medias.toArray(new InputMedia[0]));
         bot.execute(request);
     }
 
-    private List<InputMedia<?>> mapMedias(final TelegramPost telegramPost) {
+    private List<InputMedia<?>> mapMedias(final InstagramPostDTO instagramPostDTO) {
         final List<InputMedia<?>> inputMedia = new ArrayList<>();
-        for (InstagramMedia instagramPostMedia : telegramPost.getInstagramPost().getInstagramMedia()) {
-            String url = instagramPostMedia.getUrl();
-            File media = new File(url);
-            if (url.endsWith("mp4")) {
+        for (String mediaURL : instagramPostDTO.getMediaURLs()) {
+            File media = new File(mediaURL);
+            if (mediaURL.contains(".mp4?")) {
                 InputMediaVideo video = new InputMediaVideo(media);
                 inputMedia.add(video);
-            } else if (url.endsWith("jpg")) {
+            } else if (mediaURL.contains(".jpg?")) {
                 InputMediaPhoto photo = new InputMediaPhoto(media);
                 inputMedia.add(photo);
             } else {
-                throw new UnsupportedMediaFormatException("Unknown file format: " + url);
+                throw new UnsupportedMediaFormatException("Unknown file format: " + mediaURL);
             }
         }
         return inputMedia;
