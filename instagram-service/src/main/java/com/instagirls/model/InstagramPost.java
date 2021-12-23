@@ -7,7 +7,6 @@ import org.hibernate.annotations.UpdateTimestamp;
 
 import javax.persistence.*;
 import java.time.LocalDateTime;
-import java.util.List;
 import java.util.UUID;
 
 @Entity
@@ -25,9 +24,6 @@ public class InstagramPost {
 
     @Column(nullable = false, unique = true)
     private String instagramPostCode;
-
-    @OneToMany(fetch = FetchType.EAGER)
-    private List<InstagramMedia> instagramMedia;
 
     @Column(nullable = false)
     private Integer likes = 0;

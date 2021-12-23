@@ -3,15 +3,20 @@ package com.instagirls.service;
 import com.github.instagram4j.instagram4j.IGClient;
 import com.github.instagram4j.instagram4j.exceptions.IGLoginException;
 import com.github.instagram4j.instagram4j.requests.IGRequest;
+import com.github.instagram4j.instagram4j.requests.media.MediaInfoRequest;
 import com.github.instagram4j.instagram4j.responses.IGResponse;
+import com.github.instagram4j.instagram4j.responses.media.MediaInfoResponse;
 import com.instagirls.exception.LoginFailedException;
 import com.instagirls.model.InstagramAccount;
+import com.instagirls.util.InstagramMediaDispatcher;
 import com.instagirls.util.ThreadUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
+import java.util.List;
 import java.util.concurrent.ExecutionException;
+import java.util.stream.Collectors;
 
 @Service
 public class APIService {
@@ -83,4 +88,10 @@ public class APIService {
     }
 
 
+    public List<String> getMediaURLsByPostId(final String instagramPostId) {
+        login();
+        final MediaInfoRequest mediaInfoRequest = new MediaInfoRequest(instagramPostId);
+        MediaInfoResponse mediaInfoResponse = sendRequest(mediaInfoRequest);
+        return mediaInfoResponse.getItems().stream().flatMap(m -> InstagramMediaDispatcher.getMediaURLs(m).stream()).collect(Collectors.toList());
+    }
 }

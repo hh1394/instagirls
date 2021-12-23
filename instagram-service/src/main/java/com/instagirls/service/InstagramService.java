@@ -6,7 +6,6 @@ import com.github.instagram4j.instagram4j.responses.feed.FeedUserResponse;
 import com.instagirls.dto.InstagramPostDTO;
 import com.instagirls.exception.InstagramAccountExistsException;
 import com.instagirls.model.InstagramAccount;
-import com.instagirls.model.InstagramMedia;
 import com.instagirls.model.InstagramPost;
 import com.instagirls.repository.InstagramAccountRepository;
 import com.instagirls.repository.InstagramPostRepository;
@@ -17,6 +16,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.Optional;
@@ -61,10 +61,7 @@ public class InstagramService {
         if (instagramPost.isPresent()) {
             final InstagramPost post = instagramPost.get();
             LOGGER.info("New most liked post ID: " + post.getUuid());
-            List<String> mediaURLs = post.getInstagramMedia()
-                    .stream()
-                    .map(InstagramMedia::getUrl)
-                    .collect(Collectors.toList());
+            List<String> mediaURLs = apiService.getMediaURLsByPostId(post.getInstagramPostId());
             return InstagramPostDTO.builder()
                     .account("https://www.instagram.com/" + instagramAccount.getUsername() + "/")
                     .postCode(post.getInstagramPostCode())
@@ -212,6 +209,7 @@ public class InstagramService {
         return pk;
     }
 
+    @Transactional
     public void disableAccount(final String username) {
         LOGGER.info(String.format("Switching account %s off!", username));
         instagramAccountRepository.setActiveFalse(username);
