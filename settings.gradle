@@ -1,4 +1,5 @@
 rootProject.name = 'instagirls'
 include 'instagram-service'
 include 'telegram-bot'
+include 'common'
 
