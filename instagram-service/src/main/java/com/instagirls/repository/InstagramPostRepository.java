@@ -1,8 +1,10 @@
 package com.instagirls.repository;
 
 import com.instagirls.model.InstagramPost;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.CrudRepository;
+import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.util.Optional;
@@ -19,4 +21,9 @@ public interface InstagramPostRepository extends CrudRepository<InstagramPost, U
     Optional<InstagramPost> findTopByInstagramAccountOrderByTakenAtDesc(final String instagramAccountUUID);
 
     InstagramPost findByInstagramPostCode(String postCode);
+
+    @Modifying
+    @Query("update InstagramPost post set post.posted = true where post.instagramPostCode = :postCode")
+    void setPosted(@Param("phone") String postCode);
+
 }

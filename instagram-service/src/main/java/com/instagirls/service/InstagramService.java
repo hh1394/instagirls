@@ -87,7 +87,8 @@ public class InstagramService {
                     .mediaURLs(mediaURLs)
                     .build();
         } else {
-            disableAccount(instagramAccount);
+            LOGGER.info("No posts for " + instagramAccount.getUsername());
+            disableAccount(instagramAccount.getUsername());
             return getNewMostLikedPostFromRandomAccount();
         }
     }
@@ -245,11 +246,9 @@ public class InstagramService {
         return pk;
     }
 
-    private void disableAccount(final InstagramAccount instagramAccount) {
-        LOGGER.info("No posts for " + instagramAccount.getUsername());
-        LOGGER.info("Switching off!");
-        instagramAccount.setActive(false);
-        instagramAccountRepository.save(instagramAccount);
+    public void disableAccount(final String username) {
+        LOGGER.info(String.format("Switching account %s off!", username));
+        instagramAccountRepository.setActiveFalse(username);
     }
 
     private InstagramAccount getRandomAccount() {
@@ -291,9 +290,7 @@ public class InstagramService {
 
 
     public void setPosted(final String postCode) {
-        final InstagramPost instagramPost = instagramPostRepository.findByInstagramPostCode(postCode);
-        instagramPost.setPosted(true);
-        instagramPostRepository.save(instagramPost);
+        instagramPostRepository.setPosted(postCode);
         LOGGER.info(String.format("Post %s is set to POSTED!", postCode));
     }
 

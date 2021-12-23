@@ -21,7 +21,7 @@ public class AccountController {
 
     @DeleteMapping("/{username}")
     public void disableAccount(@PathVariable final String username) {
-
+        instagramService.disableAccount(username);
     }
 
 }
