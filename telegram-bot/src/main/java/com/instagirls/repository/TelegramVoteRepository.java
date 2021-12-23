@@ -1,8 +1,8 @@
 package com.instagirls.repository;
 
-import com.instagirls.model.telegram.TelegramPost;
-import com.instagirls.model.telegram.TelegramVote;
-import com.instagirls.model.telegram.TelegramVoteType;
+import com.instagirls.model.TelegramPost;
+import com.instagirls.model.TelegramVote;
+import com.instagirls.model.TelegramVoteType;
 import org.springframework.data.repository.CrudRepository;
 import org.springframework.stereotype.Repository;
 

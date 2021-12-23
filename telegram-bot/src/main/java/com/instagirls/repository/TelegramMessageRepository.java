@@ -1,7 +1,7 @@
 package com.instagirls.repository;
 
-import com.instagirls.model.telegram.TelegramMessage;
-import com.instagirls.model.telegram.TelegramUser;
+import com.instagirls.model.TelegramMessage;
+import com.instagirls.model.TelegramUser;
 import org.springframework.data.repository.CrudRepository;
 import org.springframework.stereotype.Repository;
 

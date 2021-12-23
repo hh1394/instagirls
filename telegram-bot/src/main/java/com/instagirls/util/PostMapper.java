@@ -1,7 +1,7 @@
 package com.instagirls.util;
 
-import com.instagirls.model.telegram.TelegramVote;
-import com.instagirls.model.telegram.TelegramVoteType;
+import com.instagirls.model.TelegramVote;
+import com.instagirls.model.TelegramVoteType;
 import com.pengrad.telegrambot.model.Update;
 
 public class PostMapper {
