@@ -5,7 +5,6 @@ import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.Type;
 import org.hibernate.annotations.UpdateTimestamp;
 
-import javax.persistence.*;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
@@ -13,7 +12,7 @@ import java.util.UUID;
 @Entity
 @Table
 @Data
-public class InstagramAccount {
+public class InstagramPost {
 
     @Id
     @GeneratedValue
@@ -21,16 +20,22 @@ public class InstagramAccount {
     private UUID uuid;
 
     @Column(nullable = false, unique = true)
-    private String username;
+    private String instagramPostId;
 
-    @Column(unique = true)
-    private Long instagramPk;
+    @Column(nullable = false, unique = true)
+    private String instagramPostCode;
 
     @OneToMany(fetch = FetchType.EAGER)
-    private List<InstagramPost> instagramPosts;
+    private List<InstagramMedia> instagramMedia;
 
     @Column(nullable = false)
-    private boolean active = true;
+    private Integer likes = 0;
+
+    @Column(nullable = false)
+    private boolean posted = false;
+
+    @Column(nullable = false)
+    private long takenAt;
 
     @CreationTimestamp
     private LocalDateTime createdAt;
@@ -38,15 +43,6 @@ public class InstagramAccount {
     @UpdateTimestamp
     private LocalDateTime updatedAt;
 
-    public InstagramAccount(final String username) {
-        this.username = username;
-    }
-
-    public InstagramAccount() {
-
-    }
-
-    public void addInstagramPosts(final List<InstagramPost> instagramPosts){
-        this.instagramPosts.addAll(instagramPosts);
+    public InstagramPost() {
     }
 }

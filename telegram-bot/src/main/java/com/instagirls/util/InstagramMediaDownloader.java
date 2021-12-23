@@ -1,6 +1,5 @@
 package com.instagirls.util;
 
-import com.github.instagram4j.instagram4j.models.media.timeline.*;
 import com.instagirls.model.instagram.InstagramMedia;
 import com.instagirls.service.telegram.entity.MediaType;
 import net.bytebuddy.utility.RandomString;
