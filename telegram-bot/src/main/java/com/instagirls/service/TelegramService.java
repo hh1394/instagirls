@@ -5,7 +5,7 @@ import com.fasterxml.jackson.annotation.PropertyAccessor;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.instagirls.dto.InstagramPostDTO;
 import com.instagirls.exception.EmptyTelegramMessageException;
-import com.instagirls.exception.InstagramAccountDoesntExistException;
+import com.instagirls.exception.InternalRequestFailedException;
 import com.instagirls.exception.UnsupportedMediaFormatException;
 import com.instagirls.model.*;
 import com.instagirls.repository.TelegramMessageRepository;
@@ -212,8 +212,12 @@ public class TelegramService {
             sendMessage(update.message().chat().id().toString(), "Processing...");
             try {
                 instagramAccessService.loadNewAccount(accountUsername);
-            } catch (InstagramAccountDoesntExistException exception) {
-                sendMessage(update.message().chat().id().toString(), String.format("%s doesn't exists or is private! %s, provide an actual and public account..", accountUsername, generateEndearment()));
+            } catch (InternalRequestFailedException exception) {
+                if (exception.getStatusCode() == 409) {
+                    sendMessage(update.message().chat().id().toString(), String.format("%s already exists, %s!", accountUsername, generateEndearment()));
+                } else if (exception.getStatusCode() == 404) {
+                    sendMessage(update.message().chat().id().toString(), String.format("%s doesn't exists or is private! %s, provide an actual and public account..", accountUsername, generateEndearment()));
+                }
             }
             sendMessage(update.message().chat().id().toString(), String.format("Loaded %s for you, %s!", accountUsername, generateEndearment()));
         } else {

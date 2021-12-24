@@ -2,9 +2,12 @@ package com.instagirls.service;
 
 import com.github.instagram4j.instagram4j.models.media.timeline.TimelineMedia;
 import com.github.instagram4j.instagram4j.requests.feed.FeedUserRequest;
+import com.github.instagram4j.instagram4j.requests.users.UsersUsernameInfoRequest;
 import com.github.instagram4j.instagram4j.responses.feed.FeedUserResponse;
+import com.github.instagram4j.instagram4j.responses.users.UserResponse;
 import com.instagirls.dto.InstagramPostDTO;
 import com.instagirls.exception.InstagramAccountExistsException;
+import com.instagirls.exception.InstagramAccountNotFoundException;
 import com.instagirls.model.InstagramAccount;
 import com.instagirls.model.InstagramPost;
 import com.instagirls.repository.InstagramAccountRepository;
@@ -76,6 +79,9 @@ public class InstagramService {
 
     public void loadNewAccount(final String username) {
         LOGGER.info("Loading new account: " + username);
+        if (!accountExists(username)) {
+            throw new InstagramAccountNotFoundException(username);
+        }
         InstagramAccount instagramAccount = new InstagramAccount(username);
         try {
             instagramAccount = instagramAccountRepository.save(instagramAccount);
@@ -85,6 +91,12 @@ public class InstagramService {
         }
         loadPostsForAccount(instagramAccount);
         LOGGER.info(String.format("Account %s loaded!", username));
+    }
+
+    private boolean accountExists(final String username) {
+        final UsersUsernameInfoRequest usersUsernameInfoRequest = new UsersUsernameInfoRequest(username);
+        final UserResponse userResponse = apiService.sendRequest(usersUsernameInfoRequest);
+        return userResponse.getUser() != null && !userResponse.getUser().is_private();
     }
 
     private void loadPostsForAccount(final InstagramAccount instagramAccount) {
