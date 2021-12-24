@@ -1,6 +1,7 @@
 package com.instagirls.service;
 
 import lombok.SneakyThrows;
+import okhttp3.*;
 import org.springframework.stereotype.Service;
 
 @Service

@@ -63,7 +63,7 @@ public class TelegramService {
     @Autowired
     private TelegramUserRepository telegramUserRepository;
     @Autowired
-    private InstagramService instagramService;
+    private InstagramAccessService instagramAccessService;
     @Autowired
     private CaptionService captionService;
 
@@ -113,15 +113,15 @@ public class TelegramService {
         telegramVoteRepository.deleteAll();
         final InstagramPostDTO instagramPostDTO;
         if (sameGirl) {
-            instagramPostDTO = instagramService.getNewMostLikedPostFromAccount(getCurrentPost().getInstagramUsername());
+            instagramPostDTO = instagramAccessService.getNewMostLikedPostFromAccount(getCurrentPost().getInstagramUsername());
         } else {
-            instagramPostDTO = instagramService.getNewMostLikedPostFromRandomAccount();
+            instagramPostDTO = instagramAccessService.getNewMostLikedPostFromRandomAccount();
         }
         TelegramPost telegramPost = new TelegramPost(instagramPostDTO);
         telegramPostRepository.save(telegramPost);
         sendContentToChat(instagramPostDTO);
 
-        instagramService.setPosted(instagramPostDTO.getPostCode());
+        instagramAccessService.setPosted(instagramPostDTO.getPostCode());
     }
 
     private int processUpdates(final List<Update> updates) {
@@ -211,7 +211,7 @@ public class TelegramService {
 
             sendMessage(update.message().chat().id().toString(), "Processing...");
             try {
-                instagramService.loadNewAccount(accountUsername);
+                instagramAccessService.loadNewAccount(accountUsername);
             } catch (InstagramAccountDoesntExistException exception) {
                 sendMessage(update.message().chat().id().toString(), String.format("%s doesn't exists or is private! %s, provide an actual and public account..", accountUsername, generateEndearment()));
             }
@@ -287,7 +287,9 @@ public class TelegramService {
     }
 
     private String banCurrentGirl() {
-        return instagramService.disableAccount(getCurrentPost().getInstagramUsername());
+        String instagramUsername = getCurrentPost().getInstagramUsername();
+        instagramAccessService.disableAccount(instagramUsername);
+        return instagramUsername;
     }
 
     private void removeVotesFromMessageReplyMarkup(final Update update) {

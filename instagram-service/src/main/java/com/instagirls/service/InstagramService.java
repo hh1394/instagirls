@@ -224,6 +224,7 @@ public class InstagramService {
         return instagramAccount;
     }
 
+    @Transactional
     public void setPosted(final String postCode) {
         instagramPostRepository.setPosted(postCode);
         LOGGER.info(String.format("Post %s is set to POSTED!", postCode));
