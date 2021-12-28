@@ -52,9 +52,13 @@ public class APIService {
         try {
             return igClient.sendRequest(request).get();
         } catch (ExecutionException | InterruptedException e) {
-            e.printStackTrace();
-            ThreadUtil.sleep(1);
-            LOGGER.info("Retyring..");
+            if (e instanceof ExecutionException && "login_required".equals(e.getMessage())) {
+                login();
+            } else {
+                e.printStackTrace();
+                ThreadUtil.sleep(1);
+                LOGGER.info("Retyring..");
+            }
             return sendRequest(request);
         }
     }

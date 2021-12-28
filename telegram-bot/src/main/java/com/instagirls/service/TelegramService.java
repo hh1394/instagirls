@@ -80,8 +80,6 @@ public class TelegramService {
             return url.substring(beginIndex);
         }
     }
-
-
     @PostConstruct
     private void initService() {
         mapper.setVisibility(PropertyAccessor.FIELD, JsonAutoDetect.Visibility.ANY);

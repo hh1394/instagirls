@@ -8,6 +8,7 @@ import com.github.instagram4j.instagram4j.responses.users.UserResponse;
 import com.instagirls.dto.InstagramPostDTO;
 import com.instagirls.exception.InstagramAccountExistsException;
 import com.instagirls.exception.InstagramAccountNotFoundException;
+import com.instagirls.exception.UncheckedInterruptedException;
 import com.instagirls.model.InstagramAccount;
 import com.instagirls.model.InstagramPost;
 import com.instagirls.repository.InstagramAccountRepository;
@@ -26,6 +27,9 @@ import java.util.Optional;
 import java.util.Random;
 import java.util.Set;
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 
@@ -159,6 +163,7 @@ public class InstagramService {
 
     }
 
+    //TODO refactor
     private void loadAllPostsForAccount(final InstagramAccount instagramAccount) {
         FeedUserResponse feedUserResponse;
 
@@ -171,6 +176,7 @@ public class InstagramService {
                 .collect(Collectors.toList());
         instagramAccount.addInstagramPosts(posts);
 
+        ExecutorService es = Executors.newCachedThreadPool();
         while (feedUserResponse.isMore_available()) {
             request.setMax_id(feedUserResponse.getNext_max_id());
             feedUserResponse = apiService.sendRequest(request);
@@ -184,17 +190,27 @@ public class InstagramService {
                 instagramAccount.addInstagramPosts(instagramPosts);
             };
 
-            Thread thread = new Thread(task);
-            thread.start();
+            es.execute(task);
 
 
             LOGGER.info("Batch: " + feedUserResponse.getItems().size());
             LOGGER.info("Loading more posts!");
         }
 
-        instagramAccountRepository.save(instagramAccount);
-
-        LOGGER.info("Done loading posts!");
+        es.shutdown();
+        try {
+            boolean finished = es.awaitTermination(5, TimeUnit.HOURS);
+            if (finished) {
+                instagramAccountRepository.save(instagramAccount);
+                LOGGER.info("Done loading posts!");
+            } else {
+                instagramAccountRepository.delete(instagramAccount);
+                LOGGER.info("Error while loading posts!");
+                LOGGER.info("Deleting account! " + instagramAccount);
+            }
+        } catch (InterruptedException e) {
+            throw new UncheckedInterruptedException(e);
+        }
     }
 
     private InstagramPost saveAsInstagramPost(final TimelineMedia timelineMedia) {

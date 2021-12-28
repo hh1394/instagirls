@@ -1,12 +1,14 @@
 package com.instagirls.model;
 
 import lombok.Data;
+import org.hibernate.annotations.Cascade;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.Type;
 import org.hibernate.annotations.UpdateTimestamp;
 
 import javax.persistence.*;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
@@ -27,7 +29,8 @@ public class InstagramAccount {
     private Long instagramPk;
 
     @OneToMany(fetch = FetchType.EAGER)
-    private List<InstagramPost> instagramPosts;
+    @Cascade(org.hibernate.annotations.CascadeType.ALL)
+    private List<InstagramPost> instagramPosts = new ArrayList<>();
 
     @Column(nullable = false)
     private boolean active = true;
