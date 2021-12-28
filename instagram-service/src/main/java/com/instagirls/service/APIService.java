@@ -59,6 +59,13 @@ public class APIService {
         }
     }
 
+    public List<String> getMediaURLsByPostId(final String instagramPostId) {
+        login();
+        final MediaInfoRequest mediaInfoRequest = new MediaInfoRequest(instagramPostId);
+        MediaInfoResponse mediaInfoResponse = sendRequest(mediaInfoRequest);
+        return mediaInfoResponse.getItems().stream().flatMap(m -> InstagramMediaDispatcher.getMediaURLs(m).stream()).collect(Collectors.toList());
+    }
+
     private void performLogin() {
         LOGGER.info("Performing login.. ");
         try {
@@ -87,11 +94,4 @@ public class APIService {
                 .login();
     }
 
-
-    public List<String> getMediaURLsByPostId(final String instagramPostId) {
-        login();
-        final MediaInfoRequest mediaInfoRequest = new MediaInfoRequest(instagramPostId);
-        MediaInfoResponse mediaInfoResponse = sendRequest(mediaInfoRequest);
-        return mediaInfoResponse.getItems().stream().flatMap(m -> InstagramMediaDispatcher.getMediaURLs(m).stream()).collect(Collectors.toList());
-    }
 }

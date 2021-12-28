@@ -28,7 +28,6 @@ import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
 import javax.annotation.PostConstruct;
@@ -104,7 +103,6 @@ public class TelegramService {
         }
     }
 
-    @Scheduled(cron = "0 0 8 * * ?")
     public void sendDailyGirl() {
         sendNewPostToTelegram(false);
     }

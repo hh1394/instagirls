@@ -56,6 +56,10 @@ public class InstagramService {
         return buildInstagramPostDTO(instagramAccount);
     }
 
+    public void updateGirls() {
+        instagramAccountRepository.findAll().forEach(this::loadPostsForAccount);
+    }
+
     private InstagramPostDTO buildInstagramPostDTO(final InstagramAccount instagramAccount) {
         final Optional<InstagramPost> instagramPost = instagramAccount.getInstagramPosts().stream()
                 .sorted((ip1, ip2) -> Long.compare(ip2.getLikes(), ip1.getLikes()))
@@ -151,6 +155,8 @@ public class InstagramService {
         List<InstagramPost> instagramPosts = items.parallelStream().map(this::saveAsInstagramPost).collect(Collectors.toList());
         instagramAccount.setInstagramPosts(instagramPosts);
         instagramAccountRepository.save(instagramAccount);
+        LOGGER.info("Done saving posts!");
+
     }
 
     private void loadAllPostsForAccount(final InstagramAccount instagramAccount) {
@@ -242,4 +248,10 @@ public class InstagramService {
         LOGGER.info(String.format("Post %s is set to POSTED!", postCode));
     }
 
+    public void deleteAccount(final String username) {
+        LOGGER.info("Deleting " + username + "...");
+        final InstagramAccount account = instagramAccountRepository.findByUsername(username);
+        instagramAccountRepository.delete(account);
+        LOGGER.info("Deleted " + username + "!");
+    }
 }
