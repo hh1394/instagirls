@@ -19,7 +19,7 @@ public class InstagramAccessService {
     final static private HttpClient HTTP_CLIENT = HttpClient.newBuilder().build();
 
     public InstagramPostDTO getNewMostLikedPostFromAccount(final String instagramUsername) {
-        final URI uri = buildURI(INSTAGRAM_SERVICE_BASE_URL + "/post/account/" + instagramUsername);
+        final URI uri = buildURI(INSTAGRAM_SERVICE_BASE_URL + "/posts/accounts/" + instagramUsername);
 
         HttpRequest request = HttpRequest.newBuilder()
                 .uri(uri)
@@ -31,7 +31,7 @@ public class InstagramAccessService {
 
     public InstagramPostDTO getNewMostLikedPostFromRandomAccount() {
 
-        final URI uri = buildURI(INSTAGRAM_SERVICE_BASE_URL + "/post/random/");
+        final URI uri = buildURI(INSTAGRAM_SERVICE_BASE_URL + "/posts/random/");
 
         HttpRequest request = HttpRequest.newBuilder()
                 .uri(uri)
@@ -44,7 +44,7 @@ public class InstagramAccessService {
 
     public void setPosted(final String postCode) {
 
-        final URI uri = buildURI(INSTAGRAM_SERVICE_BASE_URL + "/post/" + postCode);
+        final URI uri = buildURI(INSTAGRAM_SERVICE_BASE_URL + "/posts/" + postCode);
 
         HttpRequest request = HttpRequest.newBuilder()
                 .uri(uri)
@@ -55,7 +55,7 @@ public class InstagramAccessService {
     }
 
     public void loadNewAccount(final String accountUsername) throws InstagramAccountDoesntExistException {
-        final URI uri = buildURI(INSTAGRAM_SERVICE_BASE_URL + "/account/" + accountUsername);
+        final URI uri = buildURI(INSTAGRAM_SERVICE_BASE_URL + "/accounts/" + accountUsername);
 
         HttpRequest request = HttpRequest.newBuilder()
                 .uri(uri)
@@ -66,7 +66,7 @@ public class InstagramAccessService {
     }
 
     public void disableAccount(final String accountUsername) {
-        final URI uri = buildURI(INSTAGRAM_SERVICE_BASE_URL + "/account/" + accountUsername);
+        final URI uri = buildURI(INSTAGRAM_SERVICE_BASE_URL + "/accounts/" + accountUsername);
 
         HttpRequest request = HttpRequest.newBuilder()
                 .uri(uri)

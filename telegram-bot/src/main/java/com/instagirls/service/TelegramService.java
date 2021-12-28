@@ -31,7 +31,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import javax.annotation.PostConstruct;
-import java.io.File;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -419,12 +418,11 @@ public class TelegramService {
     private List<InputMedia<?>> mapMedias(final InstagramPostDTO instagramPostDTO) {
         final List<InputMedia<?>> inputMedia = new ArrayList<>();
         for (String mediaURL : instagramPostDTO.getMediaURLs()) {
-            File media = new File(mediaURL);
             if (mediaURL.contains(".mp4?")) {
-                InputMediaVideo video = new InputMediaVideo(media);
+                InputMediaVideo video = new InputMediaVideo(mediaURL);
                 inputMedia.add(video);
             } else if (mediaURL.contains(".jpg?")) {
-                InputMediaPhoto photo = new InputMediaPhoto(media);
+                InputMediaPhoto photo = new InputMediaPhoto(mediaURL);
                 inputMedia.add(photo);
             } else {
                 throw new UnsupportedMediaFormatException("Unknown file format: " + mediaURL);
