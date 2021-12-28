@@ -19,7 +19,7 @@ public class ControllerAdvice {
     }
 
     @ResponseBody
-    @ExceptionHandler(InstagramAccountExistsException.class)
+    @ExceptionHandler(InstagramAccountNotFoundException.class)
     @ResponseStatus(HttpStatus.NOT_FOUND)
     String accountNotFoundHandler(InstagramAccountNotFoundException ex) {
         return ex.getUsername();
