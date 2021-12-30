@@ -10,6 +10,7 @@ import java.net.URISyntaxException;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 
 @Service
@@ -54,7 +55,7 @@ public class InstagramAccessService {
         sendRequest(request);
     }
 
-    public void loadNewAccount(final String accountUsername) throws InstagramAccountDoesntExistException {
+    public CompletableFuture<Void> loadNewAccount(final String accountUsername) throws InstagramAccountDoesntExistException {
         final URI uri = buildURI(INSTAGRAM_SERVICE_BASE_URL + "/accounts/" + accountUsername);
 
         HttpRequest request = HttpRequest.newBuilder()
@@ -62,10 +63,10 @@ public class InstagramAccessService {
                 .POST(HttpRequest.BodyPublishers.noBody())
                 .build();
 
-        sendRequest(request);
+        return sendRequest(request);
     }
 
-    public void disableAccount(final String accountUsername) {
+    public CompletableFuture<Void> disableAccount(final String accountUsername) {
         final URI uri = buildURI(INSTAGRAM_SERVICE_BASE_URL + "/accounts/" + accountUsername);
 
         HttpRequest request = HttpRequest.newBuilder()
@@ -73,7 +74,7 @@ public class InstagramAccessService {
                 .DELETE()
                 .build();
 
-        sendRequest(request);
+        return sendRequest(request);
     }
 
     // TODO parametrize?
@@ -87,16 +88,16 @@ public class InstagramAccessService {
         }
     }
 
-    private void sendRequest(final HttpRequest request) {
-        try {
-            int statusCode = HTTP_CLIENT.sendAsync(request, HttpResponse.BodyHandlers.discarding()).get().statusCode();
-            if (statusCode != 200) {
-                throw new InternalRequestFailedException(statusCode);
-            }
-        } catch (InterruptedException e) {
-            throw new UncheckedInterruptedException(e);
-        } catch (ExecutionException e) {
-            throw new UncheckedExecutionException(e);
+    private CompletableFuture<Void> sendRequest(final HttpRequest request) {
+
+        return HTTP_CLIENT
+                .sendAsync(request, HttpResponse.BodyHandlers.discarding()).thenAccept(this::processResponse);
+
+    }
+
+    private void processResponse(final HttpResponse<Void> response) {
+        if (response.statusCode() != 200) {
+            throw new InternalRequestFailedException(response.statusCode());
         }
     }
 

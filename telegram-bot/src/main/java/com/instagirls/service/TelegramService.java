@@ -34,6 +34,7 @@ import javax.annotation.PostConstruct;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
 
 import static com.instagirls.model.TelegramVoteType.*;
 import static com.instagirls.util.Util.generateEndearment;
@@ -203,22 +204,26 @@ public class TelegramService {
         }
         if (COMMAND_ADD_GIRL.equals(previousUserCommandMessage.getText())) {
             final String accountUsername = extractInstagramAccount(update.message().text());
-
-            sendMessage(update.message().chat().id().toString(), "Processing...");
-            try {
-                instagramAccessService.loadNewAccount(accountUsername);
-            } catch (InternalRequestFailedException exception) {
-                if (exception.getStatusCode() == 409) {
-                    sendMessage(update.message().chat().id().toString(), String.format("%s already exists, %s!", accountUsername, generateEndearment()));
-                } else if (exception.getStatusCode() == 404) {
-                    sendMessage(update.message().chat().id().toString(), String.format("%s doesn't exists or is private! %s, provide an actual and public account..", accountUsername, generateEndearment()));
-                }
-            }
-            sendMessage(update.message().chat().id().toString(), String.format("Loaded %s for you, %s!", accountUsername, generateEndearment()));
+            loadGirl(update.message().chat().id().toString(), accountUsername);
         } else {
             sendMessage(update.message().chat().id().toString(), String.format("Won't do, %s!", generateEndearment()));
         }
         telegramMessageRepository.delete(previousUserCommandMessage);
+    }
+
+    private void loadGirl(final String chatId, final String accountUsername) {
+        sendMessage(chatId, String.format("Loading %s... Anything else?", accountUsername));
+        try {
+            instagramAccessService.loadNewAccount(accountUsername).thenApply(cf -> sendMessage(
+                    chatId,
+                    String.format("Loaded %s for you, %s!", accountUsername, generateEndearment())));
+        } catch (InternalRequestFailedException exception) {
+            if (exception.getStatusCode() == 409) {
+                sendMessage(chatId, String.format("We already have %s, %s!", accountUsername, generateEndearment()));
+            } else if (exception.getStatusCode() == 404) {
+                sendMessage(chatId, String.format("%s doesn't exists or is private! %s, provide an actual and public account..", accountUsername, generateEndearment()));
+            }
+        }
     }
 
     private String extractInstagramAccount(final String text) {
@@ -269,9 +274,10 @@ public class TelegramService {
             removeVotesFromMessageReplyMarkup(update);
             switch (telegramVoteType) {
                 case BAN_GIRL:
-                    final String username = banCurrentGirl();
-                    sendMessage(update.callbackQuery().message().chat().id().toString(), String.format("Banned that %s '%s' for you!", generateInsult(), username));
-                    sendNewPostToTelegram(false);
+                    banCurrentGirl().thenAccept(username -> {
+                        sendMessage(update.callbackQuery().message().chat().id().toString(), String.format("Banned that %s '%s' for you!", generateInsult(), username));
+                        sendNewPostToTelegram(false);
+                    });
                     break;
                 case SEND_SAME_GIRL:
                     sendNewPostToTelegram(true);
@@ -285,10 +291,9 @@ public class TelegramService {
         }
     }
 
-    private String banCurrentGirl() {
+    private CompletableFuture<String> banCurrentGirl() {
         String instagramUsername = getCurrentPost().getInstagramUsername();
-        instagramAccessService.disableAccount(instagramUsername);
-        return instagramUsername;
+        return instagramAccessService.disableAccount(instagramUsername).thenApply(v -> instagramUsername);
     }
 
     private void removeVotesFromMessageReplyMarkup(final Update update) {
