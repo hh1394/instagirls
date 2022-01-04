@@ -80,6 +80,7 @@ public class TelegramService {
             return url.substring(beginIndex);
         }
     }
+
     @PostConstruct
     private void initService() {
         mapper.setVisibility(PropertyAccessor.FIELD, JsonAutoDetect.Visibility.ANY);
@@ -213,15 +214,31 @@ public class TelegramService {
 
     private void loadGirl(final String chatId, final String accountUsername) {
         sendMessage(chatId, String.format("Loading %s... Anything else?", accountUsername));
-        try {
-            instagramAccessService.loadNewAccount(accountUsername).thenApply(cf -> sendMessage(
-                    chatId,
-                    String.format("Loaded %s for you, %s!", accountUsername, generateEndearment())));
-        } catch (InternalRequestFailedException exception) {
-            if (exception.getStatusCode() == 409) {
-                sendMessage(chatId, String.format("We already have %s, %s!", accountUsername, generateEndearment()));
-            } else if (exception.getStatusCode() == 404) {
-                sendMessage(chatId, String.format("%s doesn't exists or is private! %s, provide an actual and public account..", accountUsername, generateEndearment()));
+
+        instagramAccessService.loadNewAccount(accountUsername).handle((res, ex) -> {
+            if (ex == null) {
+                sendMessage(
+                        chatId,
+                        String.format("Loaded %s for you, %s!", accountUsername, generateEndearment()));
+            } else {
+                processCompletionExceptionHttpStatusCode(chatId, accountUsername, ex);
+            }
+            return null;
+        });
+    }
+
+    private void processCompletionExceptionHttpStatusCode(final String chatId, final String accountUsername, final Throwable ex) {
+        if (ex.getCause() instanceof InternalRequestFailedException) {
+            final Integer statusCode = ((InternalRequestFailedException) ex.getCause()).getStatusCode();
+            switch (statusCode) {
+                case 409:
+                    sendMessage(chatId, String.format("We already have %s, %s!", accountUsername, generateEndearment()));
+                    break;
+                case 404:
+                    sendMessage(chatId, String.format("%s doesn't exists or is private! %s, provide an actual and public account..", accountUsername, generateEndearment()));
+                    break;
+                default:
+                    LOGGER.error("Unexpected status code: " + statusCode);
             }
         }
     }
