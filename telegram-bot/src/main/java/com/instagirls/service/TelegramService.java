@@ -50,7 +50,6 @@ public class TelegramService {
     private static final String COMMAND_SEND_GIRL = "/sendgirl";
     private static final String CHAT_ID = System.getenv("chat_id");
     private final ObjectMapper mapper = new ObjectMapper();
-    private final List<String> supportedCommands = new ArrayList<>();
     private TelegramBot bot;
 
     @Autowired
@@ -84,9 +83,6 @@ public class TelegramService {
     @PostConstruct
     private void initService() {
         mapper.setVisibility(PropertyAccessor.FIELD, JsonAutoDetect.Visibility.ANY);
-
-        supportedCommands.add(COMMAND_START);
-        supportedCommands.add(COMMAND_ADD_GIRL);
 
         initBot();
     }
