@@ -35,6 +35,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
+import java.util.stream.Collectors;
 
 import static com.instagirls.model.TelegramVoteType.*;
 import static com.instagirls.util.Util.generateEndearment;
@@ -200,27 +201,27 @@ public class TelegramService {
             return;
         }
         if (COMMAND_ADD_GIRL.equals(previousUserCommandMessage.getText())) {
-            final String accountUsername = extractInstagramAccount(update.message().text());
-            loadGirl(update.message().chat().id().toString(), accountUsername);
+            final List<String> accountUsernames = extractInstagramAccount(update.message().text()).lines().collect(Collectors.toList());
+            loadGirl(update.message().chat().id().toString(), accountUsernames);
         } else {
             sendMessage(update.message().chat().id().toString(), String.format("Won't do, %s!", generateEndearment()));
         }
         telegramMessageRepository.delete(previousUserCommandMessage);
     }
 
-    private void loadGirl(final String chatId, final String accountUsername) {
-        sendMessage(chatId, String.format("Loading %s... Anything else?", accountUsername));
+    private void loadGirl(final String chatId, final List<String> accountUsernames) {
+        sendMessage(chatId, String.format("Loading %s... Anything else?", accountUsernames));
 
-        instagramAccessService.loadNewAccount(accountUsername).handle((res, ex) -> {
+        accountUsernames.forEach(u -> instagramAccessService.loadNewAccount(u).handle((res, ex) -> {
             if (ex == null) {
                 sendMessage(
                         chatId,
-                        String.format("Loaded %s for you, %s!", accountUsername, generateEndearment()));
+                        String.format("Loaded %s for you, %s!", u, generateEndearment()));
             } else {
-                processCompletionExceptionHttpStatusCode(chatId, accountUsername, ex);
+                processCompletionExceptionHttpStatusCode(chatId, u, ex);
             }
             return null;
-        });
+        }));
     }
 
     private void processCompletionExceptionHttpStatusCode(final String chatId, final String accountUsername, final Throwable ex) {
