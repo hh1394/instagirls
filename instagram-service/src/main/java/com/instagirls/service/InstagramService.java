@@ -50,6 +50,7 @@ public class InstagramService {
 
 
     public InstagramPostDTO getNewMostLikedPostFromAccount(final String username) {
+        LOGGER.info("Getting new most liked post for account: " + username);
         final InstagramAccount instagramAccount = instagramAccountRepository.findByUsername(username);
         return buildInstagramPostDTO(instagramAccount);
     }

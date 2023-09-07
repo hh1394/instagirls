@@ -44,7 +44,7 @@ import static com.instagirls.util.Util.generateInsult;
 public class TelegramService {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(TelegramService.class);
-    private static final Integer CREATOR_ACCOUNT_ID = 441477123;
+    private static final Long CREATOR_ACCOUNT_ID = 441477123L;
     private static final String COMMAND_START = "/start";
     private static final String COMMAND_ADD_GIRL = "/addgirl";
     private static final String COMMAND_SEND_GIRL = "/sendgirl";
