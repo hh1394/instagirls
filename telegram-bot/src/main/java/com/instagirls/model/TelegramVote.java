@@ -19,7 +19,7 @@ public class TelegramVote {
     private UUID uuid;
 
     @Column(nullable = false)
-    private Integer telegramUserId;
+    private Long telegramUserId;
 
     @OneToOne
     private TelegramPost telegramPost;

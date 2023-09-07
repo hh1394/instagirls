@@ -9,6 +9,6 @@ import java.util.UUID;
 @Repository
 public interface TelegramUserRepository extends CrudRepository<TelegramUser, UUID> {
 
-    TelegramUser findByTelegramId(final Integer telegramId);
+    TelegramUser findByTelegramId(final Long telegramId);
 
 }

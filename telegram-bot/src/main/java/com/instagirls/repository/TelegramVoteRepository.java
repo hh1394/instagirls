@@ -14,5 +14,5 @@ public interface TelegramVoteRepository extends CrudRepository<TelegramVote, UUI
 
     List<TelegramVote> findByTelegramPostAndTelegramVoteType(final TelegramPost currentPost, final TelegramVoteType telegramVoteType);
 
-    TelegramVote findByTelegramUserIdAndTelegramPostAndTelegramVoteType(final Integer telegramUserId, final TelegramPost telegramPost, final TelegramVoteType telegramVoteType);
+    TelegramVote findByTelegramUserIdAndTelegramPostAndTelegramVoteType(final Long telegramUserId, final TelegramPost telegramPost, final TelegramVoteType telegramVoteType);
 }

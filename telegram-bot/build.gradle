@@ -14,8 +14,8 @@ repositories {
 dependencies {
     implementation project(':common')
 
-    compileOnly group: 'org.projectlombok', name: 'lombok', version: '1.18.18'
-    annotationProcessor 'org.projectlombok:lombok:1.18.18'
+    implementation group: 'org.springframework.boot', name: 'spring-boot-starter-web', version: '2.4.5'
+
 
     implementation group: 'org.springframework.boot', name: 'spring-boot-starter-parent', version: '2.4.5'
     implementation group: 'org.springframework.boot', name: 'spring-boot-starter-data-jpa', version: '2.4.5'
@@ -24,7 +24,10 @@ dependencies {
     implementation group: 'com.fasterxml.jackson.core', name: 'jackson-databind', version: '2.13.1'
 
     implementation group: 'com.github.instagram4j', name: 'instagram4j', version: '2.0.4'
-    implementation group: 'com.github.pengrad', name: 'java-telegram-bot-api', version: '5.1.0'
+    implementation group: 'com.github.pengrad', name: 'java-telegram-bot-api', version: '6.8.0'
+
+    implementation "jakarta.xml.bind:jakarta.xml.bind-api:2.3.2"
+    implementation "org.glassfish.jaxb:jaxb-runtime:2.3.2"
 
     testImplementation 'org.junit.jupiter:junit-jupiter-api:5.6.0'
     testRuntimeOnly 'org.junit.jupiter:junit-jupiter-engine'

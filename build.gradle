@@ -12,8 +12,8 @@ repositories {
     }
 }
 dependencies {
-    compileOnly group: 'org.projectlombok', name: 'lombok', version: '1.18.18'
-    annotationProcessor 'org.projectlombok:lombok:1.18.18'
+    compileOnly group: 'org.projectlombok', name: 'lombok', version: 'latest'
+    annotationProcessor 'org.projectlombok:lombok:+'
 
     implementation group: 'org.springframework.boot', name: 'spring-boot-starter-parent', version: '2.4.5'
     implementation group: 'org.springframework.boot', name: 'spring-boot-starter-data-jpa', version: '2.4.5'

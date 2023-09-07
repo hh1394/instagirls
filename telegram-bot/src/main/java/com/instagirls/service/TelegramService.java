@@ -253,7 +253,7 @@ public class TelegramService {
         return text.replace("/", "");
     }
 
-    private TelegramMessage getLastUserMessage(final Integer telegramUserId) {
+    private TelegramMessage getLastUserMessage(final Long telegramUserId) {
         final TelegramUser telegramUser = telegramUserRepository.findByTelegramId(telegramUserId);
         return telegramMessageRepository.findTopTelegramMessageByTelegramUser(telegramUser);
     }
@@ -265,7 +265,7 @@ public class TelegramService {
 
     private void processAddGirlCommand(final Update update) {
         LOGGER.info("Got request for a new girl account!");
-        final Integer telegramUserId = update.message().from().id();
+        final Long telegramUserId = update.message().from().id();
         final TelegramUser telegramUser = telegramUserRepository.findByTelegramId(telegramUserId);
         telegramMessageRepository.save(new TelegramMessage(update.message().messageId(), telegramUser, update.message().text()));
         sendMessage(telegramUserId.toString(),
@@ -422,7 +422,7 @@ public class TelegramService {
         return girlAccountUrlKeyboardButton;
     }
 
-    private SendResponse sendMessage(final String chatId, final String message) {
+    public SendResponse sendMessage(final String chatId, final String message) {
         final SendMessage sendMessage = new SendMessage(chatId, message);
         return bot.execute(sendMessage);
     }
