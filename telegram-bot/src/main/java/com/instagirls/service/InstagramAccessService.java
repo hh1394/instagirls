@@ -17,12 +17,11 @@ import java.util.concurrent.ExecutionException;
 public class InstagramAccessService {
 
 //    final static private String INSTAGRAM_SERVICE_BASE_URL = System.getenv("ig_service_url");
-final static private String INSTAGRAM_SERVICE_BASE_URL = "http://localhost:8080/";
+final static private String INSTAGRAM_SERVICE_BASE_URL = "http://localhost:8080";
     final static private HttpClient HTTP_CLIENT = HttpClient.newBuilder().build();
 
     public InstagramPostDTO getNewMostLikedPostFromAccount(final String instagramUsername) {
-        final URI uri = buildURI(INSTAGRAM_SERVICE_BASE_URL + "/posts/accounts/" + instagramUsername);
-
+        final URI uri = buildURI(INSTAGRAM_SERVICE_BASE_URL + "/posts/account/" + instagramUsername);
         HttpRequest request = HttpRequest.newBuilder()
                 .uri(uri)
                 .GET()
