@@ -13,6 +13,10 @@ repositories {
 }
 dependencies {
     implementation project(':common')
+    implementation 'org.projectlombok:lombok:1.18.28'
+
+    compileOnly group: 'org.projectlombok', name: 'lombok', version: '+'
+    annotationProcessor 'org.projectlombok:lombok:+'
 
     implementation group: 'org.springframework.boot', name: 'spring-boot-starter-web', version: '2.4.5'
 
