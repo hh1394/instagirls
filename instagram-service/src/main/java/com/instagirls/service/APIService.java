@@ -56,7 +56,7 @@ public class APIService {
                 login();
             } else {
                 e.printStackTrace();
-                ThreadUtil.sleep(1);
+                ThreadUtil.sleep(10);
                 LOGGER.info("Retyring..");
             }
             return sendRequest(request);
