@@ -2,6 +2,7 @@ package com.instagirls.service;
 
 import com.github.instagram4j.instagram4j.IGClient;
 import com.github.instagram4j.instagram4j.exceptions.IGLoginException;
+import com.github.instagram4j.instagram4j.exceptions.IGResponseException;
 import com.github.instagram4j.instagram4j.requests.IGRequest;
 import com.github.instagram4j.instagram4j.requests.media.MediaInfoRequest;
 import com.github.instagram4j.instagram4j.responses.IGResponse;
@@ -49,14 +50,15 @@ public class APIService {
 
     public <T extends IGResponse> T sendRequest(final IGRequest<T> request) {
         login();
+        ThreadUtil.sleepSeconds(5);
         try {
             return igClient.sendRequest(request).get();
-        } catch (ExecutionException | InterruptedException e) {
-            if (e instanceof ExecutionException && "login_required".equals(e.getMessage())) {
+        } catch (ExecutionException  | InterruptedException e ) {
+            if ((e instanceof ExecutionException || e instanceof IGResponseException) && "login_required".equals(e.getMessage())) {
                 login();
             } else {
                 e.printStackTrace();
-                ThreadUtil.sleep(10);
+                ThreadUtil.sleepMinutes(1);
                 LOGGER.info("Retyring..");
             }
             return sendRequest(request);
@@ -87,7 +89,7 @@ public class APIService {
     private void retryLogin() {
         ++loginRetryCounter;
         LOGGER.info("Login failed. Retrying in 1 minute..");
-        ThreadUtil.sleep(1);
+        ThreadUtil.sleepMinutes(1);
         performLogin();
     }
 

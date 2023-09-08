@@ -346,7 +346,7 @@ public class TelegramService {
         final SendResponse response = sendMessage(CHAT_ID, captionService.getCaption());
         if (!response.isOk() && response.description().contains("retry")) {
             LOGGER.info("Could not send reply keyboard markup. Retrying..");
-            ThreadUtil.sleep(1);
+            ThreadUtil.sleepMinutes(1);
             sendCaptionWithReplyKeyboardMarkup(instagramAccountURL);
         } else {
             LOGGER.info("Adding reply keyboard markup..");
