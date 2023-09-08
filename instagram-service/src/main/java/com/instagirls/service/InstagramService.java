@@ -8,6 +8,7 @@ import com.github.instagram4j.instagram4j.responses.users.UserResponse;
 import com.instagirls.dto.InstagramPostDTO;
 import com.instagirls.exception.InstagramAccountExistsException;
 import com.instagirls.exception.InstagramAccountNotFoundException;
+import com.instagirls.exception.NoActiveAccountException;
 import com.instagirls.exception.UncheckedInterruptedException;
 import com.instagirls.model.InstagramAccount;
 import com.instagirls.model.InstagramPost;

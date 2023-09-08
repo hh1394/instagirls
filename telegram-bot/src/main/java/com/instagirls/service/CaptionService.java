@@ -5,6 +5,7 @@ import com.instagirls.dto.InstagramPostDTO;
 import com.instagirls.exception.URIException;
 import lombok.SneakyThrows;
 import okhttp3.*;
+import okhttp3.Response;
 import org.jetbrains.annotations.NotNull;
 import org.springframework.stereotype.Service;
 
