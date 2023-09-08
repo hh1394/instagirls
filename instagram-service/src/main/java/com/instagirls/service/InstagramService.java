@@ -158,7 +158,7 @@ public class InstagramService {
         }
         LOGGER.info("Done loading posts!");
 
-        List<InstagramPost> instagramPosts = items.parallelStream().map(this::saveAsInstagramPost).collect(Collectors.toList());
+        List<InstagramPost> instagramPosts = items.parallelStream().map(i -> saveAsInstagramPost(i, instagramAccount)).collect(Collectors.toList());
         instagramAccount.setInstagramPosts(instagramPosts);
         instagramAccountRepository.save(instagramAccount);
         LOGGER.info("Done saving posts!");
@@ -174,7 +174,7 @@ public class InstagramService {
         feedUserResponse = apiService.sendRequest(request);
 
         List<InstagramPost> posts = feedUserResponse.getItems().parallelStream()
-                .map(this::saveAsInstagramPost)
+                .map(i -> saveAsInstagramPost(i, instagramAccount))
                 .collect(Collectors.toList());
         instagramAccount.addInstagramPosts(posts);
 
@@ -187,7 +187,7 @@ public class InstagramService {
             Runnable task = () -> {
                 LOGGER.debug("Started new thread");
                 List<InstagramPost> instagramPosts = itemsChunk.parallelStream()
-                        .map(this::saveAsInstagramPost)
+                        .map(i -> saveAsInstagramPost(i, instagramAccount))
                         .collect(Collectors.toList());
                 instagramAccount.addInstagramPosts(instagramPosts);
             };
@@ -215,7 +215,7 @@ public class InstagramService {
         }
     }
 
-    private InstagramPost saveAsInstagramPost(final TimelineMedia timelineMedia) {
+    private InstagramPost saveAsInstagramPost(final TimelineMedia timelineMedia, final InstagramAccount instagramAccount) {
 
         final InstagramPost instagramPost = new InstagramPost();
 
@@ -223,6 +223,7 @@ public class InstagramService {
         instagramPost.setInstagramPostCode(timelineMedia.getCode());
         instagramPost.setLikes(timelineMedia.getLike_count());
         instagramPost.setTakenAt(timelineMedia.getTaken_at());
+        instagramPost.setInstagramAccount(instagramAccount);
         instagramPostRepository.save(instagramPost);
 
         return instagramPost;

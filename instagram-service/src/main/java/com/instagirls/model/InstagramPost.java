@@ -25,6 +25,9 @@ public class InstagramPost {
     @Column(nullable = false, unique = true)
     private String instagramPostCode;
 
+    @ManyToOne
+    private InstagramAccount instagramAccount;
+
     @Column(nullable = false)
     private Integer likes = 0;
 

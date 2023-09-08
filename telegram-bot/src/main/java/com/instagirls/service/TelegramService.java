@@ -31,6 +31,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import javax.annotation.PostConstruct;
+import java.io.UncheckedIOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -120,7 +121,11 @@ public class TelegramService {
 
     private int processUpdates(final List<Update> updates) {
         LOGGER.info(String.format("Got %s updates!", updates.size()));
-        updates.forEach(this::processUpdate);
+        try{
+            updates.forEach(this::processUpdate);
+        }catch (UncheckedIOException exception){
+            LOGGER.info("Update failed.");
+        }
         return updates.get(updates.size() - 1).updateId();
     }
 
