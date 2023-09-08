@@ -251,10 +251,12 @@ public class InstagramService {
     }
 
     private InstagramAccount getRandomAccount() {
-        final List<InstagramAccount> allAccounts = instagramAccountRepository.findByActiveTrue();
-        LOGGER.info("All accounts: " + allAccounts.size());
-
-        final InstagramAccount instagramAccount = allAccounts.get(rand.nextInt(allAccounts.size()));
+        final List<InstagramAccount> allActiveAccounts = instagramAccountRepository.findByActiveTrue();
+        LOGGER.info("All accounts: " + allActiveAccounts.size());
+        if(allActiveAccounts.isEmpty()){
+            throw new NoActiveAccountException();
+        }
+        final InstagramAccount instagramAccount = allActiveAccounts.get(rand.nextInt(allActiveAccounts.size()));
         LOGGER.info("Random instagram account: " + instagramAccount.getUsername());
         return instagramAccount;
     }
