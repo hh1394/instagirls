@@ -4,6 +4,7 @@ import com.fasterxml.jackson.annotation.JsonAutoDetect;
 import com.fasterxml.jackson.annotation.PropertyAccessor;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.instagirls.dto.InstagramPostDTO;
+import com.instagirls.exception.CurrentPostNotFoundException;
 import com.instagirls.exception.EmptyTelegramMessageException;
 import com.instagirls.exception.InternalRequestFailedException;
 import com.instagirls.exception.UnsupportedMediaFormatException;
@@ -35,6 +36,7 @@ import java.io.UncheckedIOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
 
@@ -107,8 +109,16 @@ public class TelegramService {
     private void sendNewPostToTelegram(final boolean sameGirl) {
         telegramVoteRepository.deleteAll();
         final InstagramPostDTO instagramPostDTO;
-        if (sameGirl) {
-            instagramPostDTO = instagramAccessService.getNewMostLikedPostFromAccount(getCurrentPost().getInstagramUsername());
+        Optional<TelegramPost> currentPost = getCurrentPost();
+
+
+        if (currentPost.isPresent()) {
+            String instagramUsername = currentPost.get().getInstagramUsername();
+            if (sameGirl) {
+                instagramPostDTO = instagramAccessService.getNewMostLikedPostFromAccount(instagramUsername);
+            } else {
+                instagramPostDTO = instagramAccessService.getNewMostLikedPostFromRandomAccountExcept(instagramUsername);
+            }
         } else {
             instagramPostDTO = instagramAccessService.getNewMostLikedPostFromRandomAccount();
         }
@@ -121,9 +131,9 @@ public class TelegramService {
 
     private int processUpdates(final List<Update> updates) {
         LOGGER.info(String.format("Got %s updates!", updates.size()));
-        try{
+        try {
             updates.forEach(this::processUpdate);
-        }catch (UncheckedIOException exception){
+        } catch (UncheckedIOException exception) {
             LOGGER.info("Update failed.");
         }
         return updates.get(updates.size() - 1).updateId();
@@ -137,7 +147,7 @@ public class TelegramService {
         }
         if (update.callbackQuery() != null && update.callbackQuery().data() != null && isNewVote(update)) {
             final TelegramVote telegramVote = PostMapper.mapToTelegramVote(update);
-            telegramVote.setTelegramPost(getCurrentPost());
+            telegramVote.setTelegramPost(getCurrentPost().orElseThrow(CurrentPostNotFoundException::new));
             telegramVoteRepository.save(telegramVote);
             LOGGER.info(String.format("Got %s request!", update.callbackQuery().data()));
             LOGGER.info("User: " + update.callbackQuery().from());
@@ -311,7 +321,7 @@ public class TelegramService {
     }
 
     private CompletableFuture<String> banCurrentGirl() {
-        String instagramUsername = getCurrentPost().getInstagramUsername();
+        String instagramUsername = getCurrentPost().orElseThrow(CurrentPostNotFoundException::new).getInstagramUsername();
         return instagramAccessService.disableAccount(instagramUsername).thenApply(v -> instagramUsername);
     }
 
@@ -413,11 +423,11 @@ public class TelegramService {
     }
 
     private int getNewTelegramVoteCounter(final TelegramVoteType telegramVoteType) {
-        final TelegramPost telegramPost = getCurrentPost();
+        final TelegramPost telegramPost = getCurrentPost().orElseThrow(CurrentPostNotFoundException::new);
         return telegramVoteRepository.findByTelegramPostAndTelegramVoteType(telegramPost, telegramVoteType).size();
     }
 
-    private TelegramPost getCurrentPost() {
+    private Optional<TelegramPost> getCurrentPost() {
         return telegramPostRepository.findTopByOrderByCreatedAtDesc();
     }
 
@@ -457,7 +467,7 @@ public class TelegramService {
 
 
     private boolean isEnoughVotes(final TelegramVoteType telegramVoteType) {
-        final TelegramPost currentPost = getCurrentPost();
+        final TelegramPost currentPost = getCurrentPost().orElseThrow(CurrentPostNotFoundException::new);
         List<TelegramVote> votes = telegramVoteRepository.findByTelegramPostAndTelegramVoteType(currentPost, telegramVoteType);
         if (SEND_NEW_GIRL.equals(telegramVoteType) || SEND_SAME_GIRL.equals(telegramVoteType)) {
             return votes.size() > 3;
@@ -474,7 +484,7 @@ public class TelegramService {
         }
         final TelegramVoteType telegramVoteType = valueOf(update.callbackQuery().data());
         return telegramVoteRepository.findByTelegramUserIdAndTelegramPostAndTelegramVoteType(update.callbackQuery().from().id(),
-                getCurrentPost(), telegramVoteType) == null;
+                getCurrentPost().orElseThrow(CurrentPostNotFoundException::new), telegramVoteType) == null;
     }
 
 

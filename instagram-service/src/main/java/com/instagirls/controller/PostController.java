@@ -5,6 +5,8 @@ import com.instagirls.service.InstagramService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
+import javax.websocket.server.PathParam;
+
 
 @RestController
 @RequestMapping("/posts")
@@ -15,8 +17,12 @@ public class PostController {
 
     @GetMapping("/random")
     @ResponseBody
-    public InstagramPostDTO getRandomMostLikedPost() {
-        return instagramService.getNewMostLikedPostFromRandomAccount();
+    public InstagramPostDTO getRandomMostLikedPost(@PathParam("exception") String instagramAccount) {
+        if(instagramAccount != null){
+            return instagramService.getNewMostLikedPostFromRandomAccountExcept(instagramAccount);
+        }else{
+            return instagramService.getNewMostLikedPostFromRandomAccount();
+        }
     }
 
     @PatchMapping("/{postCode}")

@@ -56,6 +56,11 @@ public class InstagramService {
         return buildInstagramPostDTO(instagramAccount);
     }
 
+    public InstagramPostDTO getNewMostLikedPostFromRandomAccountExcept(String instagramAccountName) {
+        final InstagramAccount instagramAccount = getRandomAccountExcept(instagramAccountName);
+        return buildInstagramPostDTO(instagramAccount);
+    }
+
     @NotNull
     public InstagramPostDTO getNewMostLikedPostFromRandomAccount() {
         final InstagramAccount instagramAccount = getRandomAccount();
@@ -259,6 +264,20 @@ public class InstagramService {
             throw new NoActiveAccountException();
         }
         final InstagramAccount instagramAccount = allActiveAccounts.get(rand.nextInt(allActiveAccounts.size()));
+        LOGGER.info("Random instagram account: " + instagramAccount.getUsername());
+        return instagramAccount;
+    }
+
+    private InstagramAccount getRandomAccountExcept(String instagramAccountName) {
+        final List<InstagramAccount> allActiveAccounts = instagramAccountRepository.findByActiveTrue();
+        LOGGER.info("All accounts: " + allActiveAccounts.size());
+        if(allActiveAccounts.isEmpty()){
+            throw new NoActiveAccountException();
+        }
+        final InstagramAccount instagramAccount = allActiveAccounts.stream()
+                .filter(a -> !a.getUsername().equals(instagramAccountName))
+                .toList()
+                .get(rand.nextInt(allActiveAccounts.size()));
         LOGGER.info("Random instagram account: " + instagramAccount.getUsername());
         return instagramAccount;
     }

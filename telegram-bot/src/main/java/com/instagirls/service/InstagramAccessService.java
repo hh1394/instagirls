@@ -31,8 +31,19 @@ final static private String INSTAGRAM_SERVICE_BASE_URL = "http://localhost:8080"
     }
 
     public InstagramPostDTO getNewMostLikedPostFromRandomAccount() {
-
         final URI uri = buildURI(INSTAGRAM_SERVICE_BASE_URL + "/posts/random/");
+
+        HttpRequest request = HttpRequest.newBuilder()
+                .uri(uri)
+                .GET()
+                .build();
+
+        return sendRequestForDTO(request);
+    }
+
+    public InstagramPostDTO getNewMostLikedPostFromRandomAccountExcept(String instagramUsername) {
+
+        final URI uri = buildURI(INSTAGRAM_SERVICE_BASE_URL + "/posts/random?exception=" + instagramUsername);
 
         HttpRequest request = HttpRequest.newBuilder()
                 .uri(uri)
@@ -76,8 +87,8 @@ final static private String INSTAGRAM_SERVICE_BASE_URL = "http://localhost:8080"
 
         return sendRequest(request);
     }
-
     // TODO parametrize?
+
     private InstagramPostDTO sendRequestForDTO(final HttpRequest request) {
         try {
             return HTTP_CLIENT.sendAsync(request, new JsonBodyHandler<>(InstagramPostDTO.class)).get().body().get();

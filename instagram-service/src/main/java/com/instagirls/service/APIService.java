@@ -50,7 +50,7 @@ public class APIService {
 
     public <T extends IGResponse> T sendRequest(final IGRequest<T> request) {
         login();
-        ThreadUtil.sleepSeconds(5);
+//        ThreadUtil.sleepSeconds(5);
         try {
             return igClient.sendRequest(request).get();
         } catch (ExecutionException  | InterruptedException e ) {
