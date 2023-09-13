@@ -101,8 +101,8 @@ public class InstagramService {
         try {
             instagramAccount = instagramAccountRepository.save(instagramAccount);
         } catch (DataIntegrityViolationException exception) {
-            LOGGER.info(String.format("Account %s already exists!", username));
-            throw new InstagramAccountExistsException(username);
+            LOGGER.info(String.format("Account %s already exists! Trying to update...", username));
+            instagramAccount = instagramAccountRepository.findByUsername(username);
         }
         loadPostsForAccount(instagramAccount);
         LOGGER.info(String.format("Account %s loaded!", username));
