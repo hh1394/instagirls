@@ -6,7 +6,6 @@ import com.github.instagram4j.instagram4j.requests.users.UsersUsernameInfoReques
 import com.github.instagram4j.instagram4j.responses.feed.FeedUserResponse;
 import com.github.instagram4j.instagram4j.responses.users.UserResponse;
 import com.instagirls.dto.InstagramPostDTO;
-import com.instagirls.exception.InstagramAccountExistsException;
 import com.instagirls.exception.InstagramAccountNotFoundException;
 import com.instagirls.exception.NoActiveAccountException;
 import com.instagirls.exception.UncheckedInterruptedException;
@@ -68,14 +67,13 @@ public class InstagramService {
     }
 
     public void updateGirls() {
+        LOGGER.info("Started updating existing accounts!");
         instagramAccountRepository.findAll().forEach(this::loadPostsForAccount);
+        LOGGER.info("Done updating existing accounts!");
     }
 
     private InstagramPostDTO buildInstagramPostDTO(final InstagramAccount instagramAccount) {
-        final Optional<InstagramPost> instagramPost = instagramAccount.getInstagramPosts().stream()
-                .sorted((ip1, ip2) -> Long.compare(ip2.getLikes(), ip1.getLikes()))
-                .filter(ip -> !ip.isPosted())
-                .findFirst();
+         final Optional<InstagramPost> instagramPost = instagramPostRepository.findNotPostedMostLikedByInstagramAccount(instagramAccount.getUuid().toString());
         if (instagramPost.isPresent()) {
             final InstagramPost post = instagramPost.get();
             LOGGER.info("New most liked post ID: " + post.getUuid());
@@ -116,6 +114,7 @@ public class InstagramService {
 
     private void loadPostsForAccount(final InstagramAccount instagramAccount) {
         Optional<InstagramPost> firstOrderByTakenAtDesc = instagramPostRepository.findTopByInstagramAccountOrderByTakenAtDesc(instagramAccount.getUuid().toString());
+        LOGGER.info("Loading posts for: " + instagramAccount.getUsername());
         if (firstOrderByTakenAtDesc.isPresent()) {
             LOGGER.info("Loading only new posts!");
             loadPostsNewerThan(firstOrderByTakenAtDesc.get().getTakenAt(), instagramAccount);
@@ -161,12 +160,18 @@ public class InstagramService {
                 LOGGER.info("Loading more posts!");
             }
         }
-        LOGGER.info("Done loading posts!");
+
+        if (items.isEmpty()){
+            LOGGER.info("No new posts!");
+            return;
+        }
+
+            LOGGER.info("Done loading posts!");
 
         List<InstagramPost> instagramPosts = items.parallelStream().map(i -> saveAsInstagramPost(i, instagramAccount)).collect(Collectors.toList());
         instagramAccount.setInstagramPosts(instagramPosts);
         instagramAccountRepository.save(instagramAccount);
-        LOGGER.info("Done saving posts!");
+        LOGGER.info(String.format("Done saving %s posts!", instagramPosts.size()));
 
     }
 
@@ -260,7 +265,7 @@ public class InstagramService {
     private InstagramAccount getRandomAccount() {
         final List<InstagramAccount> allActiveAccounts = instagramAccountRepository.findByActiveTrue();
         LOGGER.info("All accounts: " + allActiveAccounts.size());
-        if(allActiveAccounts.isEmpty()){
+        if (allActiveAccounts.isEmpty()) {
             throw new NoActiveAccountException();
         }
         final InstagramAccount instagramAccount = allActiveAccounts.get(rand.nextInt(allActiveAccounts.size()));
@@ -271,7 +276,7 @@ public class InstagramService {
     private InstagramAccount getRandomAccountExcept(String instagramAccountName) {
         final List<InstagramAccount> allActiveAccounts = instagramAccountRepository.findByActiveTrue();
         LOGGER.info("All accounts: " + allActiveAccounts.size());
-        if(allActiveAccounts.isEmpty()){
+        if (allActiveAccounts.isEmpty()) {
             throw new NoActiveAccountException();
         }
         final InstagramAccount instagramAccount = allActiveAccounts.stream()

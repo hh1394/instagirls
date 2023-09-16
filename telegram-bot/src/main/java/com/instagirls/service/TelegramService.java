@@ -445,6 +445,7 @@ public class TelegramService {
 
     private void sendMedia(final InstagramPostDTO instagramPostDTO) {
         final List<InputMedia<?>> medias = mapMedias(instagramPostDTO);
+        LOGGER.info("Sending media to chat_id " + CHAT_ID);
         final SendMediaGroup request = new SendMediaGroup(CHAT_ID, medias.toArray(new InputMedia[0]));
         bot.execute(request);
     }

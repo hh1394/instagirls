@@ -30,7 +30,7 @@ public class InstagramAccount {
 
     @OneToMany(fetch = FetchType.EAGER)
     @Cascade(org.hibernate.annotations.CascadeType.ALL)
-    private List<InstagramPost> instagramPosts = new ArrayList<>();
+    private List<InstagramPost> instagramPosts;
 
     @Column(nullable = false)
     private boolean active = true;
@@ -50,6 +50,7 @@ public class InstagramAccount {
     }
 
     public void addInstagramPosts(final List<InstagramPost> instagramPosts){
+        this.instagramPosts = new ArrayList<>();
         this.instagramPosts.addAll(instagramPosts);
     }
 }

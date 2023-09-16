@@ -23,4 +23,12 @@ public interface InstagramPostRepository extends CrudRepository<InstagramPost, U
     @Query("update InstagramPost post set post.posted = true where post.instagramPostCode = :postCode")
     void setPosted(@Param("postCode") String postCode);
 
+    @Query(nativeQuery = true,
+            value = "SELECT * FROM instagram_post AS post WHERE post.instagram_account_uuid = ?1\n" +
+                    "AND posted = false\n" +
+                    "order by post.likes desc\n" +
+                    "limit 1")
+    Optional<InstagramPost> findNotPostedMostLikedByInstagramAccount(final String instagramAccountUUID);
+
+
 }

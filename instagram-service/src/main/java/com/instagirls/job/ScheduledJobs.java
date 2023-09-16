@@ -17,9 +17,7 @@ public class ScheduledJobs {
 
     @Scheduled(cron = "0 0 4 * * ?")
     public void dailyGirlsUpdate() {
-        LOGGER.info("Started updating existing accounts!");
         instagramService.updateGirls();
-        LOGGER.info("Done updating existing accounts!");
     }
 
 }

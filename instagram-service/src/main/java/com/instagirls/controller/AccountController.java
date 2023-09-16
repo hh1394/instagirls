@@ -34,4 +34,8 @@ public class AccountController {
         instagramService.disableAccount(username);
     }
 
+    @PatchMapping
+    public void dailyGirlsUpdate() {
+        instagramService.updateGirls();
+    }
 }

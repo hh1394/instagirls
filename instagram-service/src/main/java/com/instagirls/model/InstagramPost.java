@@ -22,7 +22,7 @@ public class InstagramPost {
     @Column(nullable = false, unique = true)
     private String instagramPostId;
 
-    @Column(nullable = false, unique = true)
+    @Column(nullable = false)
     private String instagramPostCode;
 
     @ManyToOne
